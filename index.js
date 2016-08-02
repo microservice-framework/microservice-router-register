@@ -73,7 +73,7 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
         }
       }
     );
-  }
+  });
 };
 
 module.exports = ZenciMicroserviceRouterRegister;
