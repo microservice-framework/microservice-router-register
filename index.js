@@ -54,23 +54,26 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
     secureKey: settings.server.secureKey
   });
 
-  client.post({
-      url: settings.route.url,
-      path: settings.route.path
-    },
-    function(err, handlerResponse) {
-      if (!err) {
-        setInterval(self.monitor,
-          settings.server.period,
-          client,
-          handlerResponse.id,
-          handlerResponse.token
-        );
-      } else {
-        console.log('Router server is not available.')
+  getMetrics(function(error, metrics) {
+    client.post({
+        url: settings.route.url,
+        path: settings.route.path,
+        metrics: metrics,
+      },
+      function(err, handlerResponse) {
+        if (!err) {
+          setInterval(self.monitor,
+            settings.server.period,
+            client,
+            handlerResponse.id,
+            handlerResponse.token
+          );
+        } else {
+          console.log('Router server is not available.')
+        }
       }
-    }
-  );
+    );
+  }
 };
 
 module.exports = ZenciMicroserviceRouterRegister;
