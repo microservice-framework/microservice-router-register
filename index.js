@@ -14,7 +14,7 @@ const bind = function(fn, me) { return function() { return fn.apply(me, argument
  *   .
  *   settings.server.url = Router Server;
  *   settings.server.secureKey = Secure key to register;
- *   settings.server.time = Send request each milisec
+ *   settings.server.period = Send request each milisec
  *   settings.route.url = Self URL to register http(s)://IP:PORT;
  *   settings.route.path = URL base path to register with
  */
@@ -55,13 +55,13 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
   });
 
   client.post({
-      url: route.url,
-      path: route.path
+      url: settings.route.url,
+      path: settings.route.path
     },
     function(err, handlerResponse) {
       if (!err) {
         setInterval(self.monitor,
-          settings.server.time,
+          settings.server.period,
           client,
           handlerResponse.id,
           handlerResponse.token
