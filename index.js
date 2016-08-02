@@ -60,7 +60,12 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
     },
     function(err, handlerResponse) {
       if (!err) {
-        setInterval(self.monitor, settings.server.time, client, handlerResponse.id, handlerResponse.token);
+        setInterval(self.monitor,
+          settings.server.time,
+          client,
+          handlerResponse.id,
+          handlerResponse.token
+        );
       } else {
         console.log('Router server is not available.')
       }
