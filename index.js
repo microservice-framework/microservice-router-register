@@ -17,6 +17,7 @@ const bind = function(fn, me) { return function() { return fn.apply(me, argument
  *   settings.server.period = Send request each milisec
  *   settings.route.url = Self URL to register http(s)://IP:PORT;
  *   settings.route.path = URL base path to register with
+ *   settings.type = Is it master or child.
  */
 function ZenciMicroserviceRouterRegister(settings) {
 
@@ -59,6 +60,7 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
         url: settings.route.url,
         path: settings.route.path,
         metrics: metrics,
+        type: settings.type
       },
       function(err, handlerResponse) {
         if (!err) {
