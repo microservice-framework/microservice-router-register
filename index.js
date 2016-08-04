@@ -5,7 +5,8 @@
 'use strict';
 
 const MicroserviceClient = require('zenci-microservice-client');
-const getMetrics = require('metrics-process');
+const pidusage = require( 'pidusage' );
+const os = require( 'os' );
 
 const bind = function(fn, me) { return function() { return fn.apply(me, arguments); }; };
 
@@ -35,15 +36,32 @@ function ZenciMicroserviceRouterRegister(settings) {
 /**
  * Ping server by timer.
  */
-ZenciMicroserviceRouterRegister.prototype.monitor = function(client, RecordID, RecordToken) {
-  getMetrics(function(error, metrics) {
-    client.put(RecordID, RecordToken, { metrics: metrics}, function(err, handlerResponse) {
-      if (err) {
-        console.log('Router server report error %s.', err.message);
+ZenciMicroserviceRouterRegister.prototype.monitor = function(cluster, client, RecordID, RecordToken) {
+
+  var totalWorkers = 0 ;
+  for (var id in cluster.workers) {
+    totalWorkers++;
+  }
+
+  var receivedStats = [];
+
+  for (var id in cluster.workers) {
+    pidusage.stat( cluster.workers[id].process.pid, function( error, stat) {
+      stat.memory = stat.memory / 1024 / 1024;
+      stat.loadavg = os.loadavg();
+      receivedStats.push(stat);
+
+      if(receivedStats.length == totalWorkers ) {
+        client.put(RecordID, RecordToken, { metrics: receivedStats}, function(err, handlerResponse) {
+          if (err) {
+            console.log('Router server report error %s.', err.message);
+          }
+        });
       }
     });
-  });
+  }
 }
+
 /**
  * Register route.
  */
@@ -55,27 +73,41 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
     secureKey: settings.server.secureKey
   });
 
-  getMetrics(function(error, metrics) {
-    client.post({
-        url: settings.route.url,
-        path: settings.route.path,
-        metrics: metrics,
-        type: settings.type
-      },
-      function(err, handlerResponse) {
-        if (!err) {
-          setInterval(self.monitor,
-            settings.server.period,
-            client,
-            handlerResponse.id,
-            handlerResponse.token
-          );
-        } else {
-          console.log('Router server is not available.')
-        }
+  var totalWorkers = 0 ;
+  for (var id in self.settings.cluster.workers) {
+    totalWorkers++;
+  }
+  var receivedStats = [];
+
+  for (var id in self.settings.cluster.workers) {
+    pidusage.stat( self.settings.cluster.workers[id].process.pid, function( error, stat) {
+      stat.memory = stat.memory / 1024 / 1024;
+      stat.loadavg = os.loadavg();
+      receivedStats.push(stat);
+
+      if(receivedStats.length == totalWorkers ) {
+        client.post({
+            url: settings.route.url,
+            path: settings.route.path,
+            metrics: receivedStats
+          },
+          function(err, handlerResponse) {
+            if (!err) {
+              setInterval(self.monitor,
+                settings.server.period,
+                self.settings.cluster,
+                client,
+                handlerResponse.id,
+                handlerResponse.token
+              );
+            } else {
+              console.log('Router server is not available.')
+            }
+          }
+        );
       }
-    );
-  });
+    });
+  }
 };
 
 module.exports = ZenciMicroserviceRouterRegister;

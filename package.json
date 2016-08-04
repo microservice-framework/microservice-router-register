@@ -1,6 +1,6 @@
 {
   "name": "zenci-microservice-router-register",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Client side router register and monitoring tool for microservices",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,8 @@
   },
   "homepage": "https://github.com/itpatrol/zenci-microservice-router-register#readme",
   "dependencies": {
-    "metrics-process": "^1.0.2",
+    "os": "^0.1.1",
+    "pidusage": "^1.0.4",
     "zenci-microservice-client": "github:itpatrol/zenci-microservice-client"
   }
 }
