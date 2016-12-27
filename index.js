@@ -89,7 +89,8 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
         client.post({
             url: settings.route.url,
             path: settings.route.path,
-            metrics: receivedStats
+            metrics: receivedStats,
+            secureKey: settings.route.secureKey
           },
           function(err, handlerResponse) {
             if (!err) {
