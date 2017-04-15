@@ -1,24 +1,24 @@
 {
-  "name": "zenci-microservice-router-register",
+  "name": "@microservice-framework/microservice-router-register",
   "version": "0.1.5",
-  "description": "Client side router register and monitoring tool for microservices",
+  "description": "Help to register microservice in microservice-router",
   "main": "index.js",
   "scripts": {
     "jscs": "jscs --fix index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/itpatrol/zenci-microservice-router-register.git"
+    "url": "git+https://github.com/microservice-framework/microservice-router-register.git"
   },
   "author": "Gormartsen",
-  "license": "SEE LICENSE IN <LICENSE.txt>",
+  "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/itpatrol/zenci-microservice-router-register/issues"
+    "url": "https://github.com/microservice-framework/microservice-router-register/issues"
   },
-  "homepage": "https://github.com/itpatrol/zenci-microservice-router-register#readme",
+  "homepage": "https://github.com/microservice-framework/microservice-router-register#readme",
   "dependencies": {
     "os": "^0.1.1",
     "pidusage": "^1.0.4",
-    "zenci-microservice-client": "github:itpatrol/zenci-microservice-client"
+    "@microservice-framework/microservice-client": "^1.0.1"
   }
 }

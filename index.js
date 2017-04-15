@@ -4,7 +4,7 @@
  */
 'use strict';
 
-const MicroserviceClient = require('zenci-microservice-client');
+const MicroserviceClient = require('@microservice-framework/microservice-client');
 const pidusage = require( 'pidusage' );
 const os = require( 'os' );
 
@@ -20,7 +20,7 @@ const bind = function(fn, me) { return function() { return fn.apply(me, argument
  *   settings.route.path = URL base path to register with
  *   settings.type = Is it master or child.
  */
-function ZenciMicroserviceRouterRegister(settings) {
+function MicroserviceRouterRegister(settings) {
 
   // Use a closure to preserve `this`
   var self = this;
@@ -36,7 +36,7 @@ function ZenciMicroserviceRouterRegister(settings) {
 /**
  * Ping server by timer.
  */
-ZenciMicroserviceRouterRegister.prototype.monitor = function(cluster, client, RecordID, RecordToken) {
+MicroserviceRouterRegister.prototype.monitor = function(cluster, client, RecordID, RecordToken) {
 
   var totalWorkers = 0 ;
   for (var id in cluster.workers) {
@@ -65,7 +65,7 @@ ZenciMicroserviceRouterRegister.prototype.monitor = function(cluster, client, Re
 /**
  * Register route.
  */
-ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
+MicroserviceRouterRegister.prototype.register = function(settings) {
   var self = this;
 
   var client = new MicroserviceClient({
@@ -111,4 +111,4 @@ ZenciMicroserviceRouterRegister.prototype.register = function(settings) {
   }
 };
 
-module.exports = ZenciMicroserviceRouterRegister;
+module.exports = MicroserviceRouterRegister;
