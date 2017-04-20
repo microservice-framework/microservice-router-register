@@ -17,8 +17,9 @@
   },
   "homepage": "https://github.com/microservice-framework/microservice-router-register#readme",
   "dependencies": {
+    "@microservice-framework/microservice-client": "^1.0.1",
+    "debug": "^2.6.3",
     "os": "^0.1.1",
-    "pidusage": "^1.0.4",
-    "@microservice-framework/microservice-client": "^1.0.1"
+    "pidusage": "^1.0.4"
   }
 }
