@@ -102,18 +102,24 @@ MicroserviceRouterRegister.prototype.reportStats = function(stats) {
   self.debug.debug('report stats');
   if (!self.authData) {
     self.debug.debug('register on router');
+    var scope = self.route.scope;
+    if(!scope){
+      scope: process.env.SCOPE;
+    }
     self.client.post({
       url: self.route.url,
       path: self.route.path,
+      scope: scope,
       metrics: stats,
       secureKey: self.route.secureKey
     },
     function(err, handlerResponse) {
-      if (!err) {
-        self.authData = handlerResponse;
-      } else {
+      if(err) {
         self.debug.log('Router server is not available.')
+        self.debug.debug('Router responce %O.', err);
+        return;
       }
+      self.authData = handlerResponse;
     });
     return;
   }

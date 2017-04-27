@@ -1,5 +1,12 @@
 # microservice-router-register
-Help to register microservice in microservice-router
+
+[![Gitter](https://img.shields.io/gitter/room/microservice-framework/chat.svg?style=flat-square)](https://gitter.im/microservice-framework/chat)
+[![npm](https://img.shields.io/npm/dt/@microservice-framework/microservice-router-register.svg?style=flat-square)](https://www.npmjs.com/~microservice-framework)
+[![microservice-frame.work](https://img.shields.io/badge/online%20docs-200-green.svg?style=flat-square)](http://microservice-frame.work)
+
+Provide:
+ - class `MicroserviceRouterRegister` to register microservice in microservice-router 
+ - function `clientViaRouter(path, callback)` to access other microservices from microservice by url.
 
 ```js
 'use strict';
@@ -128,3 +135,5 @@ Example schema/myservice.json
 ```
 
 Replace %%NAME%% with your values
+
+For more details please check our [website](http://microservice-frame.work)
