@@ -10,6 +10,7 @@ const MicroserviceClient = require('@microservice-framework/microservice-client'
 const pidusage = require('pidusage');
 const os = require('os');
 const debugF = require('debug');
+const LoaderClass = require('./includes/loaderClass.js');
 
 var debug = {
   log: debugF('client-search:log'),
@@ -104,11 +105,11 @@ MicroserviceRouterRegister.prototype.reportStats = function(stats) {
     self.debug.debug('register on router');
     var router = self.route;
     router.metrics = stats;
-    if(!router.scope && process.env.SCOPE) {
+    if (!router.scope && process.env.SCOPE) {
       router.scope = process.env.SCOPE;
     }
     self.client.post(router, function(err, handlerResponse) {
-      if(err) {
+      if (err) {
         self.debug.log('Router server is not available.')
         self.debug.debug('Router responce %O.', err);
         return;
@@ -224,5 +225,69 @@ function clientViaRouter(pathURL, callback) {
     });
 }
 
+/**
+ * Loader is a static method to wrap around LoaderClass.
+ * load mfw-name as requestDetails.name objects provided by other services.
+ */
+function loaderMicroservice(method, jsonData, requestDetails, callback) {
+
+  var preLoadValues = new LoaderClass(requestDetails.headers);
+  preLoadValues.process();
+
+  preLoadValues.on('error', function(result) {
+    var errorMessage = 'Pre Load failed:\n';
+    for (var i in result) {
+      var errorItem = result[i];
+      errorMessage = errorMessage + ' - ' + errorItem.pairSearch.name
+        + ': ' + errorItem.error.message + '\n';
+    }
+    return callback(new Error(errorMessage));
+  });
+
+  preLoadValues.on('done', function(result) {
+    if (result) {
+      for (var name in result) {
+        requestDetails[name] = result[name];
+      }
+    }
+    callback(null);
+  });
+
+  return preLoadValues;
+};
+
+/**
+ * Loader is a static method to wrap around LoaderClass.
+ * load mfw-name as requestDetails.name objects provided by other services.
+ */
+function loaderByList(list, callback) {
+  var headers = {}
+  for (var i in list) {
+    headers['mfw-' + i] = list[i];
+  }
+
+  var preLoadValues = new LoaderClass(headers);
+  preLoadValues.process();
+
+  preLoadValues.on('error', function(result) {
+    var errorMessage = 'Pre Load failed:\n';
+    for (var i in result) {
+      var errorItem = result[i];
+      errorMessage = errorMessage + ' - ' + errorItem.pairSearch.name
+        + ': ' + errorItem.error.message + '\n';
+    }
+    return callback(new Error(errorMessage));
+  });
+
+  preLoadValues.on('done', function(result) {
+    callback(null, result);
+  });
+
+  return preLoadValues;
+};
+
 module.exports.register = MicroserviceRouterRegister;
 module.exports.clientViaRouter = clientViaRouter;
+module.exports.loaderClass = LoaderClass;
+module.exports.loaderMicroservice = loaderMicroservice;
+module.exports.loaderByList = loaderByList;
