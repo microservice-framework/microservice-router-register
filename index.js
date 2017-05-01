@@ -260,10 +260,15 @@ function loaderMicroservice(method, jsonData, requestDetails, callback) {
  * Loader is a static method to wrap around LoaderClass.
  * load mfw-name as requestDetails.name objects provided by other services.
  */
-function loaderByList(list, callback) {
+function loaderByList(list, accessToken, callback) {
   var headers = {}
   for (var i in list) {
     headers['mfw-' + i] = list[i];
+  }
+  if(!callback) {
+    callback = accessToken;
+  } else {
+    headers['access_token'] = accessToken;
   }
 
   var preLoadValues = new LoaderClass(headers);
