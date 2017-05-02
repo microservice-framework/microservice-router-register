@@ -202,7 +202,11 @@ function FindTarget(routes, route, callback) {
 /**
  * Wrapper to get secure access to service by path.
  */
-function clientViaRouter(pathURL, callback) {
+function clientViaRouter(pathURL, accessToken, callback) {
+  if (!callback) {
+    callback = accessToken;
+    accessToken = false;
+  }
   let routerServer = new MicroserviceClient({
     URL: process.env.ROUTER_URL,
     secureKey: process.env.ROUTER_SECRET
@@ -216,10 +220,16 @@ function clientViaRouter(pathURL, callback) {
         if (err) {
           return callback(err, null);
         }
-        let msClient = new MicroserviceClient({
-          URL: process.env.ROUTER_PROXY_URL + '/' + pathURL,
-          secureKey: router.secureKey
-        });
+        var clientSettings = {
+          URL: process.env.ROUTER_PROXY_URL + '/' + pathURL
+        }
+        if (accessToken) {
+          clientSettings.accessToken = accessToken;
+        } else {
+          clientSettings.secureKey = router.secureKey;
+        }
+
+        let msClient = new MicroserviceClient(clientSettings);
         return callback(null, msClient);
       });
     });
