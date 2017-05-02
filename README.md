@@ -6,7 +6,10 @@
 
 Provide:
  - class `MicroserviceRouterRegister` to register microservice in microservice-router 
+ - class `loaderClass` internal use only class. Help to load data from other service by provides option. 
  - function `clientViaRouter(path, callback)` to access other microservices from microservice by url.
+ - function `loaderMicroservice(method, jsonData, requestDetails, callback)` implements callback.loader for microservice-cluster. Automatically load to requestDetails.name values from path myservice/:name/subservice
+ - function `loaderByList(list, accessToken, callback)` used by ws integration to make sure that accessToken has access to myservice/:name/subservice
 
 ```js
 'use strict';

@@ -265,7 +265,7 @@ function loaderByList(list, accessToken, callback) {
   for (var i in list) {
     headers['mfw-' + i] = list[i];
   }
-  if(!callback) {
+  if (!callback) {
     callback = accessToken;
   } else {
     headers['access_token'] = accessToken;
