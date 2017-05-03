@@ -19,8 +19,11 @@ function LoaderClass(headers) {
   self.errorResult = [];
   self.okResult = {};
   self.processedCount = 0;
+  self.mfwHeaders = {};
+
   for (var name in self.headers) {
     if (name.substr(0, 4) == 'mfw-') {
+      self.mfwHeaders[name] = self.headers[name];
       self.preLoad.push({
         name: name.substr(4),
         value: self.headers[name]
@@ -35,6 +38,16 @@ function LoaderClass(headers) {
     self.processedCount = self.processedCount + 1;
     if (self.processedCount == self.preLoad.length) {
       self.emit('error', self.errorResult);
+    }
+  });
+  self.on('itemSkip', function(pairSearch) {
+    self.processedCount = self.processedCount + 1;
+    if (self.processedCount == self.preLoad.length) {
+      if (self.errorResult.length > 0) {
+        self.emit('error', self.errorResult);
+      } else {
+        self.emit('done', self.okResult);
+      }
     }
   });
   self.on('itemOk', function(pairSearch, searchResult) {
@@ -73,6 +86,9 @@ LoaderClass.prototype.process = function() {
 LoaderClass.prototype.processPair = function(pairSearch) {
   var self = this;
   self.getLoader(pairSearch.name, function(err, client, searchBy) {
+    if(err == 'skip') {
+      return self.emit('itemSkip', pairSearch);
+    }
     if (err) {
       return self.emit('itemError', err, pairSearch);
     }
@@ -117,6 +133,9 @@ LoaderClass.prototype.getLoader = function(name, callback) {
       if (err) {
         return callback(err);
       }
+      if(routes[0].scope == process.env.SCOPE) {
+        return callback('skip');
+      }
       var clientSettings = {
         URL: process.env.ROUTER_PROXY_URL + '/' + routes[0].path[0]
       }
@@ -125,6 +144,7 @@ LoaderClass.prototype.getLoader = function(name, callback) {
       } else {
         clientSettings.secureKey = routes[0].secureKey;
       }
+      clientSettings.headers = self.mfwHeaders;
       let msClient = new MicroserviceClient(clientSettings);
       callback(null, msClient, routes[0].provides[':' + name]);
     });
