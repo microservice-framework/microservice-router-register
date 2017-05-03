@@ -242,9 +242,11 @@ function clientViaRouter(pathURL, accessToken, callback) {
 function loaderMicroservice(method, jsonData, requestDetails, callback) {
 
   var preLoadValues = new LoaderClass(requestDetails.headers);
-  preLoadValues.process();
+  debug.debug('loaderMicroservice:headers %O', requestDetails.headers);
 
   preLoadValues.on('error', function(result) {
+    debug.debug('loaderMicroservice:error %O', result);
+
     var errorMessage = 'Pre Load failed:\n';
     for (var i in result) {
       var errorItem = result[i];
@@ -255,6 +257,7 @@ function loaderMicroservice(method, jsonData, requestDetails, callback) {
   });
 
   preLoadValues.on('done', function(result) {
+    debug.debug('loaderMicroservice:done %O', result);
     if (result) {
       for (var name in result) {
         requestDetails[name] = result[name];
@@ -262,6 +265,9 @@ function loaderMicroservice(method, jsonData, requestDetails, callback) {
     }
     callback(null);
   });
+
+  preLoadValues.process();
+
 
   return preLoadValues;
 };
@@ -282,7 +288,6 @@ function loaderByList(list, accessToken, callback) {
   }
 
   var preLoadValues = new LoaderClass(headers);
-  preLoadValues.process();
 
   preLoadValues.on('error', function(result) {
     var errorMessage = 'Pre Load failed:\n';
@@ -295,8 +300,10 @@ function loaderByList(list, accessToken, callback) {
   });
 
   preLoadValues.on('done', function(result) {
+    debug.debug('loaderByList:done %O', result);
     callback(null, result);
   });
+  preLoadValues.process();
 
   return preLoadValues;
 };

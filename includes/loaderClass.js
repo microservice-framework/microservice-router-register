@@ -6,6 +6,7 @@
 const EventEmitter = require('events').EventEmitter;
 const util = require('util');
 const MicroserviceClient = require('@microservice-framework/microservice-client');
+const debugF = require('debug');
 
 /**
  * Constructor.
@@ -31,6 +32,7 @@ function LoaderClass(headers) {
     }
   }
   self.on('itemError', function(err, pairSearch) {
+    self.debug.debug('itemError %O %O',err, pairSearch);
     self.errorResult.push({
       error: err,
       pairSearch: pairSearch
@@ -41,6 +43,8 @@ function LoaderClass(headers) {
     }
   });
   self.on('itemSkip', function(pairSearch) {
+    self.debug.debug('itemSkip %O %O', pairSearch);
+
     self.processedCount = self.processedCount + 1;
     if (self.processedCount == self.preLoad.length) {
       if (self.errorResult.length > 0) {
@@ -51,6 +55,8 @@ function LoaderClass(headers) {
     }
   });
   self.on('itemOk', function(pairSearch, searchResult) {
+    self.debug.debug('itemOk %O result: %O', pairSearch, searchResult);
+
     self.okResult[pairSearch.name] = searchResult;
     self.processedCount = self.processedCount + 1;
     if (self.processedCount == self.preLoad.length) {
@@ -63,6 +69,9 @@ function LoaderClass(headers) {
   });
 }
 
+LoaderClass.prototype.debug = {
+  debug: debugF('loader:debug')
+};
 /**
  * Check module status.
  *
@@ -70,6 +79,7 @@ function LoaderClass(headers) {
  */
 LoaderClass.prototype.process = function() {
   var self = this;
+  self.debug.debug('Processing %s %O', self.preLoad.length, self.preLoad);
   if (self.preLoad.length == 0) {
     return self.emit('done', false);
   }
@@ -85,8 +95,9 @@ LoaderClass.prototype.process = function() {
  */
 LoaderClass.prototype.processPair = function(pairSearch) {
   var self = this;
+  self.debug.debug('ProcessPair %O', pairSearch);
   self.getLoader(pairSearch.name, function(err, client, searchBy) {
-    if(err == 'skip') {
+    if (err == 'skip') {
       return self.emit('itemSkip', pairSearch);
     }
     if (err) {
@@ -133,7 +144,7 @@ LoaderClass.prototype.getLoader = function(name, callback) {
       if (err) {
         return callback(err);
       }
-      if(routes[0].scope == process.env.SCOPE) {
+      if (routes[0].scope == process.env.SCOPE) {
         return callback('skip');
       }
       var clientSettings = {
