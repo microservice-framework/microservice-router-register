@@ -68,10 +68,13 @@ function LoaderClass(headers) {
     }
   });
 }
+util.inherits(LoaderClass, EventEmitter);
+
 
 LoaderClass.prototype.debug = {
   debug: debugF('loader:debug')
 };
+
 /**
  * Check module status.
  *
@@ -160,7 +163,5 @@ LoaderClass.prototype.getLoader = function(name, callback) {
       callback(null, msClient, routes[0].provides[':' + name]);
     });
 }
-
-util.inherits(LoaderClass, EventEmitter);
 
 module.exports = LoaderClass;

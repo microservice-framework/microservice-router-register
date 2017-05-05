@@ -85,6 +85,7 @@ MicroserviceRouterRegister.prototype.collectStats = function() {
   for (var id in self.cluster.workers) {
     pidusage.stat(self.cluster.workers[id].process.pid, function(error, stat) {
       stat.memory = stat.memory / 1024 / 1024;
+      stat.cpu = stat.cpu.toFixed(2);
       stat.loadavg = os.loadavg();
       receivedStats.push(stat);
       if (receivedStats.length == workersCount) {
