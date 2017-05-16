@@ -105,8 +105,8 @@ LoaderClass.prototype.process = function() {
   if (self.loadersToPrepare == 0) {
     return self.emit('done', false);
   }
-  for (var name in mfwHeaders) {
-    self.preProcessLoader(name, mfwHeaders[name]);
+  for (var name in self.mfwHeaders) {
+    self.preProcessLoader(name, self.mfwHeaders[name]);
   }
 }
 /**
