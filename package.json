@@ -1,6 +1,6 @@
 {
   "name": "@microservice-framework/microservice-router-register",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Help to register microservice in microservice-router",
   "main": "index.js",
   "scripts": {

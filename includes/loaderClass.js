@@ -170,7 +170,7 @@ LoaderClass.prototype.processPreLoad = function(preLoad) {
     preLoad.clientSettings.headers['mfw-' + name] = self.mfwHeaders[name];
   }
   let msClient = new MicroserviceClient(preLoad.clientSettings);
-  client.search(searchQuery, function(err, searchResult) {
+  msClient.search(searchQuery, function(err, searchResult) {
     if (err) {
       return self.emit('itemError', err, preLoad);
     }
