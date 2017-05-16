@@ -21,30 +21,32 @@ function LoaderClass(headers) {
   self.okResult = {};
   self.processedCount = 0;
   self.mfwHeaders = {};
+  self.loadersPrepared = 0;
+  self.loadersToPrepare = 0;
 
   for (var name in self.headers) {
     if (name.substr(0, 4) == 'mfw-') {
-      self.mfwHeaders[name] = self.headers[name];
-      self.preLoad.push({
-        name: name.substr(4),
-        value: self.headers[name]
-      });
+      self.mfwHeaders[name.substr(4)] = self.headers[name];
+      self.loadersToPrepare = self.loadersToPrepare + 1;
     }
   }
-  self.on('itemError', function(err, pairSearch) {
-    self.debug.debug('itemError %O %O',err, pairSearch);
+
+  self.on('itemError', function(err, preLoad) {
+    self.debug.debug('itemError %O %O',err, preLoad);
     self.errorResult.push({
       error: err,
-      pairSearch: pairSearch
+      pairSearch: preLoad
     });
     self.processedCount = self.processedCount + 1;
     if (self.processedCount == self.preLoad.length) {
       self.emit('error', self.errorResult);
     }
   });
-  self.on('itemSkip', function(pairSearch) {
-    self.debug.debug('itemSkip %O %O', pairSearch);
 
+  self.on('itemOk', function(preLoad, searchResult) {
+    self.debug.debug('itemOk %O result: %O', preLoad, searchResult);
+
+    self.okResult[preLoad.name] = searchResult;
     self.processedCount = self.processedCount + 1;
     if (self.processedCount == self.preLoad.length) {
       if (self.errorResult.length > 0) {
@@ -54,19 +56,38 @@ function LoaderClass(headers) {
       }
     }
   });
-  self.on('itemOk', function(pairSearch, searchResult) {
-    self.debug.debug('itemOk %O result: %O', pairSearch, searchResult);
-
-    self.okResult[pairSearch.name] = searchResult;
-    self.processedCount = self.processedCount + 1;
-    if (self.processedCount == self.preLoad.length) {
-      if (self.errorResult.length > 0) {
-        self.emit('error', self.errorResult);
-      } else {
-        self.emit('done', self.okResult);
-      }
+  self.on('loaderFailed', function(name) {
+    self.debug.debug('loader failed %s = %s', name, self.mfwHeaders[name]);
+    delete self.mfwHeaders[name];
+    self.loadersPrepared = self.loadersPrepared + 1;
+    if (self.loadersToPrepare == self.loadersPrepared) {
+      self.processLoaders();
     }
   });
+  self.on('loaderSkip', function(name) {
+    self.debug.debug('loader Skip %s = %s', name, self.mfwHeaders[name]);
+    delete self.mfwHeaders[name];
+    self.loadersPrepared = self.loadersPrepared + 1;
+    if (self.loadersToPrepare == self.loadersPrepared) {
+      self.processLoaders();
+    }
+
+  });
+  self.on('loaderReady', function(name, clientSettings, searchBy) {
+    self.debug.debug('loader ready %s = %s', name, self.mfwHeaders[name]);
+    let value = self.mfwHeaders[name];
+    self.preLoad.push({
+      name: name,
+      value: value,
+      clientSettings: clientSettings,
+      searchBy: searchBy,
+    });
+    self.loadersPrepared = self.loadersPrepared + 1;
+    if (self.loadersToPrepare == self.loadersPrepared) {
+      self.processLoaders();
+    }
+  });
+
 }
 util.inherits(LoaderClass, EventEmitter);
 
@@ -76,63 +97,91 @@ LoaderClass.prototype.debug = {
 };
 
 /**
+ * Entry point.
+ */
+LoaderClass.prototype.process = function() {
+  var self = this;
+  self.debug.debug('Processing %s %O', self.loadersToPrepare, self.mfwHeaders);
+  if (self.loadersToPrepare == 0) {
+    return self.emit('done', false);
+  }
+  for (var name in mfwHeaders) {
+    self.preProcessLoader(name, mfwHeaders[name]);
+  }
+}
+/**
  * Check module status.
  *
  * @param {object} module - module data.
  */
-LoaderClass.prototype.process = function() {
+LoaderClass.prototype.processLoaders = function() {
   var self = this;
   self.debug.debug('Processing %s %O', self.preLoad.length, self.preLoad);
+
   if (self.preLoad.length == 0) {
     return self.emit('done', false);
   }
   for (var i in self.preLoad) {
-    var pairSearch = self.preLoad[i];
-    self.processPair(pairSearch);
+    var preLoad = self.preLoad[i];
+    self.processPreLoad(preLoad);
   }
+}
 
+/**
+ * Check module status.
+ *
+ * @param {object} module - module data.
+ */
+LoaderClass.prototype.preProcessLoader = function(name, value) {
+  var self = this;
+  self.getLoaderSettings(name, function(err, clientSettings, searchBy) {
+    if (err) {
+      if (err == 'skip') {
+        return self.emit('loaderSkip', name);
+      }
+      return self.emit('loaderFailed', name);
+    }
+    return self.emit('loaderReady', name, clientSettings, searchBy);
+  })
 }
 
 /**
  * Wrapper to get secure access to service by path.
  */
-LoaderClass.prototype.processPair = function(pairSearch) {
+LoaderClass.prototype.processPreLoad = function(preLoad) {
   var self = this;
-  self.debug.debug('ProcessPair %O', pairSearch);
-  self.getLoader(pairSearch.name, function(err, client, searchBy) {
-    if (err == 'skip') {
-      return self.emit('itemSkip', pairSearch);
+  self.debug.debug('Process preLoad %O', preLoad);
+  var searchQuery = {};
+  switch (preLoad.searchBy.type){
+    case 'number': {
+      searchQuery[preLoad.searchBy.field] = parseInt(preLoad.value);
+      break;
     }
+    case 'float': {
+      searchQuery[preLoad.searchBy.field] = parseFloat(preLoad.value);
+      break;
+    }
+    default: {
+      searchQuery[preLoad.searchBy.field] = preLoad.value;
+    }
+  }
+  preLoad.clientSettings.headers = {}
+  for (var name in self.mfwHeaders) {
+    preLoad.clientSettings.headers['mfw-' + name] = self.mfwHeaders[name];
+  }
+  let msClient = new MicroserviceClient(preLoad.clientSettings);
+  client.search(searchQuery, function(err, searchResult) {
     if (err) {
-      return self.emit('itemError', err, pairSearch);
+      return self.emit('itemError', err, preLoad);
     }
-    var searchQuery = {};
-    switch (searchBy.type){
-      case 'number': {
-        searchQuery[searchBy.field] = parseInt(pairSearch.value);
-        break;
-      }
-      case 'float': {
-        searchQuery[searchBy.field] = parseFloat(pairSearch.value);
-        break;
-      }
-      default: {
-        searchQuery[searchBy.field] = pairSearch.value;
-      }
-    }
-    client.search(searchQuery, function(err, searchResult) {
-      if (err) {
-        return self.emit('itemError', err, pairSearch);
-      }
-      self.emit('itemOk', pairSearch, searchResult[0]);
-    });
+    self.emit('itemOk', preLoad, searchResult[0]);
   });
 }
 
 /**
  * Wrapper to get secure access to service by path.
  */
-LoaderClass.prototype.getLoader = function(name, callback) {
+LoaderClass.prototype.getLoaderSettings = function(name, callback) {
   var self = this;
   let routerServer = new MicroserviceClient({
     URL: process.env.ROUTER_URL,
@@ -158,9 +207,7 @@ LoaderClass.prototype.getLoader = function(name, callback) {
       } else {
         clientSettings.secureKey = routes[0].secureKey;
       }
-      clientSettings.headers = self.mfwHeaders;
-      let msClient = new MicroserviceClient(clientSettings);
-      callback(null, msClient, routes[0].provides[':' + name]);
+      callback(null, clientSettings, routes[0].provides[':' + name]);
     });
 }
 
