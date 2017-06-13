@@ -151,30 +151,12 @@ LoaderClass.prototype.preProcessLoader = function(name, value) {
 LoaderClass.prototype.processPreLoad = function(preLoad) {
   var self = this;
   self.debug.debug('Process preLoad %O', preLoad);
-  var searchQuery = {};
-  switch (preLoad.searchBy.type){
-    case 'number': {
-      searchQuery[preLoad.searchBy.field] = parseInt(preLoad.value);
-      break;
-    }
-    case 'float': {
-      searchQuery[preLoad.searchBy.field] = parseFloat(preLoad.value);
-      break;
-    }
-    default: {
-      searchQuery[preLoad.searchBy.field] = preLoad.value;
-    }
-  }
-  preLoad.clientSettings.headers = {}
-  for (var name in self.mfwHeaders) {
-    preLoad.clientSettings.headers['mfw-' + name] = self.mfwHeaders[name];
-  }
   let msClient = new MicroserviceClient(preLoad.clientSettings);
-  msClient.search(searchQuery, function(err, searchResult) {
+  msClient.get(preLoad.value, function(err, searchResult) {
     if (err) {
       return self.emit('itemError', err, preLoad);
     }
-    self.emit('itemOk', preLoad, searchResult[0]);
+    self.emit('itemOk', preLoad, searchResult);
   });
 }
 
@@ -199,8 +181,25 @@ LoaderClass.prototype.getLoaderSettings = function(name, callback) {
       if (routes[0].scope == process.env.SCOPE) {
         return callback('skip');
       }
+      let loaderURL = routes[0].path[0].split('/');
+      let resultPath = [];
+      for (var i in loaderURL) {
+        if (loaderURL[i].charAt(0) == ':') {
+          let urlItem = loaderURL[i].substr(1);
+          if (self.mfwHeaders[urlItem]) {
+            resultPath.push(self.mfwHeaders[urlItem]);
+            continue;
+          }
+        }
+        resultPath.push(loaderURL[i]);
+      }
+      if (process.env.ROUTER_PROXY_URL.charAt(process.env.ROUTER_PROXY_URL.length - 1) == '/') {
+        resultPath = process.env.ROUTER_PROXY_URL + resultPath.join('/')
+      } else {
+        resultPath = process.env.ROUTER_PROXY_URL + '/' + resultPath.join('/')
+      }
       var clientSettings = {
-        URL: process.env.ROUTER_PROXY_URL + '/' + routes[0].path[0]
+        URL: resultPath
       }
       if (self.headers.access_token) {
         clientSettings.accessToken = self.headers.access_token;
