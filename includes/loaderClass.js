@@ -152,6 +152,29 @@ LoaderClass.prototype.processPreLoad = function(preLoad) {
   var self = this;
   self.debug.debug('Process preLoad %O', preLoad);
   let msClient = new MicroserviceClient(preLoad.clientSettings);
+  if (preLoad.clientSettings.secureKey) {
+    var searchQuery = {};
+    switch (preLoad.searchBy.type){
+      case 'number': {
+        searchQuery[preLoad.searchBy.field] = parseInt(preLoad.value);
+        break;
+      }
+      case 'float': {
+        searchQuery[preLoad.searchBy.field] = parseFloat(preLoad.value);
+        break;
+      }
+      default: {
+        searchQuery[preLoad.searchBy.field] = preLoad.value;
+      }
+    }
+    msClient.search(searchQuery, function(err, searchResult) {
+      if (err) {
+        return self.emit('itemError', err, preLoad);
+      }
+      self.emit('itemOk', preLoad, searchResult[0]);
+    });
+    return;
+  }
   msClient.get(preLoad.value, function(err, searchResult) {
     if (err) {
       return self.emit('itemError', err, preLoad);
