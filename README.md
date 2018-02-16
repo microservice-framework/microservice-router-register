@@ -140,3 +140,9 @@ Example schema/myservice.json
 Replace %%NAME%% with your values
 
 For more details please check our [website](http://microservice-frame.work)
+
+## Changelog
+
+- 1.3.0
+  - preparing switch from access_token header to 'Access-Token'
+  

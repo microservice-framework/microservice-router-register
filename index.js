@@ -290,6 +290,7 @@ function loaderByList(list, accessToken, callback) {
     callback = accessToken;
   } else {
     headers['access_token'] = accessToken;
+    headers['Access-Token'] = accessToken;
   }
 
   var preLoadValues = new LoaderClass(headers);

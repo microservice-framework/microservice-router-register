@@ -224,8 +224,15 @@ LoaderClass.prototype.getLoaderSettings = function(name, callback) {
       var clientSettings = {
         URL: resultPath
       }
+      let accessToken = false;
       if (self.headers.access_token) {
-        clientSettings.accessToken = self.headers.access_token;
+        accessToken = self.headers.access_token;
+      }
+      if (self.headers['Access-Token']) {
+        accessToken = self.headers['Access-Token'];
+      }
+      if (accessToken) {
+        clientSettings.accessToken = accessToken;
       } else {
         clientSettings.secureKey = routes[0].secureKey;
       }
