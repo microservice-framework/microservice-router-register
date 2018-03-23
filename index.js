@@ -83,19 +83,31 @@ MicroserviceRouterRegister.prototype.collectStats = function() {
   }
 
   for (var id in self.cluster.workers) {
-    pidusage.stat(self.cluster.workers[id].process.pid, function(error, stat) {
-      if(stat) {
-        stat.memory = stat.memory / 1024 / 1024;
-        stat.cpu = stat.cpu.toFixed(2);
-        stat.loadavg = os.loadavg();
-        receivedStats.push(stat);
-        if (receivedStats.length == workersCount) {
-          self.emit('report', receivedStats);
+    try {
+      pidusage.stat(self.cluster.workers[id].process.pid, function(error, stat) {
+        if (stat) {
+          stat.memory = stat.memory / 1024 / 1024;
+          stat.cpu = stat.cpu.toFixed(2);
+          stat.loadavg = os.loadavg();
+          receivedStats.push(stat);
+          if (receivedStats.length == workersCount) {
+            self.emit('report', receivedStats);
+          }
+        } else {
+          workersCount = workersCount - 1;
+          if (receivedStats.length == workersCount) {
+            self.emit('report', receivedStats);
+          }
         }
-      } else {
-        workersCount = workersCount - 1;
+      });
+    } catch (e) {
+      //pidusage trow exception if pid is not awailable
+      self.debug.debug('possible dead child error %O', e);
+      workersCount = workersCount - 1;
+      if (receivedStats.length == workersCount) {
+        self.emit('report', receivedStats);
       }
-    });
+    }
   }
 }
 
@@ -275,7 +287,7 @@ function loaderMicroservice(method, jsonData, requestDetails, callback) {
 
 
   return preLoadValues;
-};
+}
 
 /**
  * Loader is a static method to wrap around LoaderClass.
@@ -312,7 +324,7 @@ function loaderByList(list, accessToken, callback) {
   preLoadValues.process();
 
   return preLoadValues;
-};
+}
 
 module.exports.register = MicroserviceRouterRegister;
 module.exports.clientViaRouter = clientViaRouter;

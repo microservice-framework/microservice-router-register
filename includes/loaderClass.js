@@ -32,7 +32,7 @@ function LoaderClass(headers) {
   }
 
   self.on('itemError', function(err, preLoad) {
-    self.debug.debug('itemError %O %O',err, preLoad);
+    self.debug.debug('itemError %O %O', err, preLoad);
     self.errorResult.push({
       error: err,
       pairSearch: preLoad
@@ -106,7 +106,7 @@ LoaderClass.prototype.process = function() {
     return self.emit('done', false);
   }
   for (var name in self.mfwHeaders) {
-    self.preProcessLoader(name, self.mfwHeaders[name]);
+    self.preProcessLoader(name);
   }
 }
 /**
@@ -132,7 +132,7 @@ LoaderClass.prototype.processLoaders = function() {
  *
  * @param {object} module - module data.
  */
-LoaderClass.prototype.preProcessLoader = function(name, value) {
+LoaderClass.prototype.preProcessLoader = function(name) {
   var self = this;
   self.getLoaderSettings(name, function(err, clientSettings, searchBy) {
     if (err) {

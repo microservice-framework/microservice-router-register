@@ -1,10 +1,10 @@
 {
   "name": "@microservice-framework/microservice-router-register",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Help to register microservice in microservice-router",
   "main": "index.js",
   "scripts": {
-    "jscs": "jscs --fix index.js includes/*.js"
+    "cs": "eslint --fix index.js includes/*.js"
   },
   "repository": {
     "type": "git",

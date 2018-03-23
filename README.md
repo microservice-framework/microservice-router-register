@@ -145,4 +145,5 @@ For more details please check our [website](http://microservice-frame.work)
 
 - 1.3.0
   - preparing switch from access_token header to 'Access-Token'
-  
+- 1.3.1
+  - fix possible crash when child is dying
