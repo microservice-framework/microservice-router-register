@@ -197,6 +197,9 @@ function FindTarget(routes, route, callback) {
 
   var availableRoutes = [];
   for (var i in routes) {
+    if(routes[i].type && routes[i].type != 'handler') {
+      continue
+    }
     routes[i].matchVariables = {};
     if (matchRoute(route, routes[i])) {
       availableRoutes.push(routes[i]);
