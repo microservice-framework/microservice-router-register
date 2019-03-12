@@ -40,6 +40,7 @@ function MicroserviceRouterRegister(settings) {
   self.authData = false
   self.isNewAPI = false
   self.cpuUsage = false
+  self.reportTimeout = false
   if (!settings.cluster.workers) {
     self.receivedStats = {}
     self.isNewAPI = true
@@ -47,16 +48,44 @@ function MicroserviceRouterRegister(settings) {
       if (message.type && message.message && message.workerPID) {
         if (message.type == 'mfw_stats') {
           if (!self.receivedStats[message.workerPID]) {
-            self.receivedStats[message.workerPID] = {}
+            self.receivedStats[message.workerPID] = {
+              workerID: message.workerID
+            }
           }
           self.receivedStats[message.workerPID].stats = message.message;
           self.receivedStats[message.workerPID].time = Date.now()
         }
         // clean up old stats for pids that doesnot exists anymore
+        let minID = 0
         for (let workerPID in self.receivedStats) {
           if (self.receivedStats[workerPID].time < Date.now() - self.server.period) {
             delete self.receivedStats[workerPID]
           }
+          if(minID == 0) {
+            minID = self.receivedStats[workerPID].workerID
+          }
+          
+          if(minID > self.receivedStats[workerPID].workerID) {
+            minID = self.receivedStats[workerPID].workerID
+          }
+        }
+
+        if(minID == self.cluster.worker.id) {
+          if(self.reportTimeout) {
+            clearTimeout(self.reportTimeout)
+          }
+          self.reportTimeout = setTimeout(function(){
+            self.debug.debug('reportTimeout triggered');
+            var receivedStats = [];
+            for(let workerPID in self.receivedStats) {
+              receivedStats.push({
+                stats: self.receivedStats[workerPID].stats,
+                cpu: self.receivedStats[workerPID].cpu,
+                loadavg: self.receivedStats[workerPID].loadavg,
+              });
+            }
+            self.emit('report', receivedStats);
+          },self.server.period)
         }
       }
     })
@@ -100,7 +129,8 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   var self = this;
   // support node before 6.1
   // pidusage will be depricated.
-  if (!process.memoryUsage || !process.process.cpuUsage) {
+  if (!process.memoryUsage || !process.cpuUsage) {
+    self.debug.debug('collect via pidusage');
     return pidusage.stat(self.cluster.worker.process.pid, function(error, stat) {
       if (stat) {
         stat.memory = stat.memory / 1024 / 1024;
@@ -114,7 +144,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
       }
     });
   }
-  
+  self.debug.debug('collect via process memoryUsage & cpuUsage');
   let cpuPercent = "0"
   if (!self.receivedStats[self.cluster.worker.process.pid]) {
     self.cpuUsage = process.cpuUsage()
@@ -134,6 +164,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   let message = {
     type: 'mfw_stats',
     workerPID: self.cluster.worker.process.pid,
+    workerID: self.cluster.worker.id,
     message: stat
   }
   if (!self.cluster.workers) {
@@ -214,7 +245,7 @@ MicroserviceRouterRegister.prototype.reportStats = function(stats) {
     });
     return;
   }
-  self.debug.debug('Update stats on router');
+  self.debug.debug('Update stats on router', self.authData);
   self.client.put(self.authData.id, self.authData.token,
     { metrics: stats}, function(err) {
     if (err) {
