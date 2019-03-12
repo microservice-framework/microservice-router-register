@@ -41,7 +41,8 @@ function MicroserviceRouterRegister(settings) {
   self.isNewAPI = false
   self.cpuUsage = false
   self.reportTimeout = false
-  if (!settings.cluster.workers) {
+  if (!self.cluster.workers) {
+    delf.debug.debug('Cluster child detected');
     self.receivedStats = {}
     self.cluster.worker.on('message', function(message){
       self.debug.debug('Received message', message);
@@ -90,7 +91,7 @@ function MicroserviceRouterRegister(settings) {
       }
     })
     setInterval(function() {
-      self.emit('timer');
+      self.emit('timer2');
       self.debug.debug('timer triggered');
     }, self.server.period);
   } else {
@@ -118,7 +119,9 @@ function MicroserviceRouterRegister(settings) {
     URL: self.server.url,
     secureKey: self.server.secureKey
   });
-
+  self.on('timer2', function() {
+    return self.collectStat();
+  });
   self.on('timer', function() {
     if (self.isNewAPI) {
       return self.collectStat();
