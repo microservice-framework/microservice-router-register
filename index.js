@@ -97,7 +97,7 @@ function MicroserviceRouterRegister(settings) {
     // backward compatibility 1.x
     // we are inside cluster.isMaster
     // Detect if old module uses this code 
-    cluster.on('message', function(worker, message) {
+    self.cluster.on('message', function(worker, message) {
       // if we received 
       self.debug.debug('NewAPI detected');
       self.isNewAPI = true;
