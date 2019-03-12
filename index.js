@@ -71,7 +71,7 @@ function MicroserviceRouterRegister(settings) {
             minID = self.receivedStats[workerPID].workerID
           }
         }
-
+        self.debug.debug('Detect who should send', minID, self.cluster.worker.id);
         if(minID == self.cluster.worker.id) {
           if(self.reportTimeout) {
             clearTimeout(self.reportTimeout)
