@@ -188,7 +188,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
     message.workerID = self.cluster.worker.id
   }
   if (!self.cluster.workers) {
-    self.cluster.message(message)
+    process.send(message);
   } else {
     self.debug.debug('Broadcast message to workers %s.', message.toString());
     for (var key in self.cluster.workers) {
