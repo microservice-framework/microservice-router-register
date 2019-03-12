@@ -37,7 +37,27 @@ function MicroserviceRouterRegister(settings) {
   self.cluster = settings.cluster;
   self.server = settings.server;
   self.route = settings.route;
-  self.authData = false;
+  self.authData = false
+  self.isNewAPI = false
+  self.cpuUsage = false
+  if (!settings.cluster.workers) {
+    self.receivedStats = {}
+    self.isNewAPI = true
+    self.cluster.worker.on('message', function(message){
+      if (message.type && message.message && message.workerPID) {
+        /*if(message.workerPID == settings.cluster.worker.id) {
+          return
+        }*/
+        if (message.type == 'mfw_stats') {
+          if (!self.receivedStats[message.workerPID]) {
+            self.receivedStats[message.workerPID] = {}
+          }
+          self.receivedStats[message.workerPID].stats = message.message;
+          self.receivedStats[message.workerPID].time = Date.now()
+        }
+      }
+    })
+  }
 
   self.client = new MicroserviceClient({
     URL: self.server.url,
@@ -45,6 +65,9 @@ function MicroserviceRouterRegister(settings) {
   });
 
   self.on('timer', function() {
+    if (self.isNewAPI) {
+      return self.collectStat();
+    }
     self.collectStats();
   });
 
@@ -67,9 +90,51 @@ MicroserviceRouterRegister.prototype.debug = {
   debug: debugF('microservice-router-register:debug'),
 };
 
+MicroserviceRouterRegister.prototype.collectStat = function() {
+  var self = this;
+  // support node before 6.1
+  // pidusage will be depricated.
+  if (!process.memoryUsage || !process.process.cpuUsage) {
+    return pidusage.stat(self.cluster.worker.process.pid, function(error, stat) {
+      if (stat) {
+        stat.memory = stat.memory / 1024 / 1024;
+        stat.cpu = stat.cpu.toFixed(2);
+        stat.loadavg = os.loadavg();
+        process.send({
+          type: 'mfw_stats',
+          workerPID: self.cluster.worker.process.pid,
+          message: stat
+        })
+      }
+    });
+  }
+  
+  let cpuPercent = "0"
+  if (!self.receivedStats[self.cluster.worker.process.pid]) {
+    self.cpuUsage = process.cpuUsage()
+    cpuPercent = 100 * (self.cpuUsage.user + self.cpuUsage.system) / process.uptime() / 1000000
+    cpuPercent = cpuPercent.toFixed(2)
+  } else {
+    let timePeriod = Date.now() - self.receivedStats[self.cluster.worker.process.pid].time
+    self.cpuUsage = process.cpuUsage(self.cpuUsage)
+    cpuPercent = 100 * (self.cpuUsage.user + self.cpuUsage.system) / timePeriod / 1000
+    cpuPercent = cpuPercent.toFixed(2)
+  }
+  let stat = {
+    memory: process.memoryUsage().rss / 1024 / 1024,
+    loadavg: os.loadavg(),
+    cpu: cpuPercent
+  }
+  self.cluster.message({
+    type: 'mfw_stats',
+    workerPID: self.cluster.worker.process.pid,
+    message: stat
+  })
+}
 
 /**
  * Collect Stats.
+ * deprecated code for 1.x compatibility
  */
 MicroserviceRouterRegister.prototype.collectStats = function() {
   var self = this;
@@ -137,7 +202,7 @@ MicroserviceRouterRegister.prototype.reportStats = function(stats) {
   }
   self.debug.debug('Update stats on router');
   self.client.put(self.authData.id, self.authData.token,
-    { metrics: stats}, function(err, handlerResponse) {
+    { metrics: stats}, function(err) {
     if (err) {
       self.authData = false;
       return self.reportStats(stats);
@@ -197,7 +262,7 @@ function FindTarget(routes, route, callback) {
 
   var availableRoutes = [];
   for (var i in routes) {
-    if(routes[i].type && routes[i].type != 'handler') {
+    if (routes[i].type && routes[i].type != 'handler') {
       continue
     }
     routes[i].matchVariables = {};
