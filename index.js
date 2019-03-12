@@ -62,11 +62,12 @@ function MicroserviceRouterRegister(settings) {
           if (self.receivedStats[workerPID].time < Date.now() - self.server.period) {
             delete self.receivedStats[workerPID]
           }
-          if(minID == 0) {
+          if(minID == 0 && self.receivedStats[workerPID].workerID) {
             minID = self.receivedStats[workerPID].workerID
           }
           
-          if(minID > self.receivedStats[workerPID].workerID) {
+          if(self.receivedStats[workerPID].workerID
+            && minID > self.receivedStats[workerPID].workerID) {
             minID = self.receivedStats[workerPID].workerID
           }
         }
@@ -92,7 +93,7 @@ function MicroserviceRouterRegister(settings) {
     })
     setInterval(function() {
       self.emit('timer2');
-      self.debug.debug('timer triggered');
+      self.debug.debug('timer2 triggered');
     }, self.server.period);
   } else {
     // backward compatibility 1.x
@@ -112,7 +113,7 @@ function MicroserviceRouterRegister(settings) {
           self.debug.debug('timer triggered');
         }, self.server.period);
       }
-    }, self.server.period + 1000);
+    }, self.server.period + 3000);
   }
 
   self.client = new MicroserviceClient({
@@ -157,14 +158,14 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   // pidusage will be depricated.
   if (!process.memoryUsage || !process.cpuUsage) {
     self.debug.debug('collect via pidusage');
-    return pidusage.stat(self.cluster.worker.process.pid, function(error, stat) {
+    return pidusage.stat(process.pid, function(error, stat) {
       if (stat) {
         stat.memory = stat.memory / 1024 / 1024;
         stat.cpu = stat.cpu.toFixed(2);
         stat.loadavg = os.loadavg();
         process.send({
           type: 'mfw_stats',
-          workerPID: self.cluster.worker.process.pid,
+          workerPID: process.pid,
           message: stat
         })
       }
@@ -172,12 +173,12 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   }
   self.debug.debug('collect via process memoryUsage & cpuUsage');
   let cpuPercent = "0"
-  if (!self.receivedStats[self.cluster.worker.process.pid]) {
+  if (!self.receivedStats[process.pid]) {
     self.cpuUsage = process.cpuUsage()
     cpuPercent = 100 * (self.cpuUsage.user + self.cpuUsage.system) / process.uptime() / 1000000
     cpuPercent = cpuPercent.toFixed(2)
   } else {
-    let timePeriod = Date.now() - self.receivedStats[self.cluster.worker.process.pid].time
+    let timePeriod = Date.now() - self.receivedStats[process.pid].time
     self.cpuUsage = process.cpuUsage(self.cpuUsage)
     cpuPercent = 100 * (self.cpuUsage.user + self.cpuUsage.system) / timePeriod / 1000
     cpuPercent = cpuPercent.toFixed(2)
@@ -189,9 +190,11 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   }
   let message = {
     type: 'mfw_stats',
-    workerPID: self.cluster.worker.process.pid,
-    workerID: self.cluster.worker.id,
+    workerPID: process.pid,
     message: stat
+  }
+  if(self.cluster.worker) {
+    message.workerID = self.cluster.worker.id
   }
   if (!self.cluster.workers) {
     self.cluster.message(message)
