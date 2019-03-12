@@ -41,6 +41,7 @@ function MicroserviceRouterRegister(settings) {
   self.isNewAPI = false
   self.cpuUsage = false
   self.reportTimeout = false
+  self.isTerminating = false
   if(typeof self.server.period != "number") {
     self.server.period = parseInt(self.server.period)
     if(!self.server.period) {
@@ -144,9 +145,15 @@ function MicroserviceRouterRegister(settings) {
     secureKey: self.server.secureKey
   });
   self.on('timer2', function() {
+    if(self.isTerminating) {
+      return
+    }
     return self.collectStat();
   });
   self.on('timer', function() {
+    if(self.isTerminating) {
+      return
+    }
     if (self.isNewAPI) {
       return self.collectStat();
     }
@@ -155,6 +162,25 @@ function MicroserviceRouterRegister(settings) {
 
   self.on('report', function(stats) {
     self.reportStats(stats);
+  });
+
+  let deleteRegister = function(){
+    if(self.authData){
+      self.debug.log('deleteRegister', process.pid, self.client)
+      self.client.delete(self.authData.id, self.authData.token, function(err, answer) {
+        self.authData = false;
+        self.debug.log('deleted', err, answer)
+      });
+    }
+  }
+
+  process.on('SIGINT', function() {
+    self.isTerminating = true
+    deleteRegister()
+  });
+  process.on('SIGTERM', function() {
+    self.isTerminating = true
+    deleteRegister()
   });
 }
 
