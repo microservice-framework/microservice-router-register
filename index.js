@@ -61,6 +61,7 @@ function MicroserviceRouterRegister(settings) {
         for (let workerPID in self.receivedStats) {
           if (self.receivedStats[workerPID].time < Date.now() - self.server.period) {
             delete self.receivedStats[workerPID]
+            continue
           }
           if(minID == 0 && self.receivedStats[workerPID].workerID) {
             minID = self.receivedStats[workerPID].workerID
