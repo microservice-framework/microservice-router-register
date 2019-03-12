@@ -43,8 +43,8 @@ function MicroserviceRouterRegister(settings) {
   self.reportTimeout = false
   if (!settings.cluster.workers) {
     self.receivedStats = {}
-    self.isNewAPI = true
     self.cluster.worker.on('message', function(message){
+      self.debug.debug('Received message', message);
       if (message.type && message.message && message.workerPID) {
         if (message.type == 'mfw_stats') {
           if (!self.receivedStats[message.workerPID]) {
@@ -89,6 +89,29 @@ function MicroserviceRouterRegister(settings) {
         }
       }
     })
+    setInterval(function() {
+      self.emit('timer');
+      self.debug.debug('timer triggered');
+    }, self.server.period);
+  } else {
+    // backward compatibility 1.x
+    // we are inside cluster.isMaster
+    // Detect if old module uses this code 
+    cluster.on('message', function(worker, message) {
+      // if we received 
+      self.debug.debug('NewAPI detected');
+      self.isNewAPI = true;
+    })
+    setTimeout(function(){
+      //failback to old API
+      if(!self.isNewAPI) {
+        self.collectStats();
+        setInterval(function() {
+          self.emit('timer');
+          self.debug.debug('timer triggered');
+        }, self.server.period);
+      }
+    }, self.server.period + 1000);
   }
 
   self.client = new MicroserviceClient({
