@@ -96,6 +96,7 @@ function MicroserviceRouterRegister(settings) {
       self.debug.debug('timer2 triggered');
     }, self.server.period);
   } else {
+    self.debug.debug('timer triggered');
     // backward compatibility 1.x
     // we are inside cluster.isMaster
     // Detect if old module uses this code 
@@ -133,16 +134,6 @@ function MicroserviceRouterRegister(settings) {
   self.on('report', function(stats) {
     self.reportStats(stats);
   });
-
-  setInterval(function() {
-    self.emit('timer');
-    self.debug.debug('timer triggered');
-  }, self.server.period);
-
-  // backward compatibility 1.x
-  if (settings.cluster.workers) {
-    self.collectStats();
-  }
 }
 
 util.inherits(MicroserviceRouterRegister, EventEmitter);
@@ -173,7 +164,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
   }
   self.debug.debug('collect via process memoryUsage & cpuUsage');
   let cpuPercent = "0"
-  if (!self.receivedStats[process.pid]) {
+  if (!self.receivedStats || !self.receivedStats[process.pid]) {
     self.cpuUsage = process.cpuUsage()
     cpuPercent = 100 * (self.cpuUsage.user + self.cpuUsage.system) / process.uptime() / 1000000
     cpuPercent = cpuPercent.toFixed(2)
