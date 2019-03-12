@@ -53,9 +53,9 @@ function MicroserviceRouterRegister(settings) {
     self.debug.debug('Cluster child detected');
     self.receivedStats = {}
     self.cluster.worker.on('message', function(message){
-      self.debug.debug('Received message', message);
-      let nowTime = Date.now()
       if (message.type && message.message && message.workerPID) {
+        let nowTime = Date.now()
+        self.debug.debug('Received message', message);
         if (message.type == 'mfw_stats') {
           if (!self.receivedStats[message.workerPID]) {
             self.receivedStats[message.workerPID] = {
@@ -121,8 +121,10 @@ function MicroserviceRouterRegister(settings) {
     // Detect if old module uses this code 
     self.cluster.on('message', function(worker, message) {
       // if we received 
-      self.debug.debug('NewAPI detected');
-      self.isNewAPI = true;
+      if(message.type && message.type == 'mfw_stats') {
+        self.debug.debug('NewAPI detected');
+        self.isNewAPI = true;
+      }
     })
     let checkIn = self.server.period + 3000
     self.debug.debug('check for failback in', checkIn);
