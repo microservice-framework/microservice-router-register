@@ -171,11 +171,11 @@ function matchRoute(route, routeItem) {
       continue;
     }
     var fullPathMatched = true;
-    for (var i = 0; i < routeItems.length; i++) {
-      if (pathItems[i].charAt(0) == ':') {
-        routeItem.matchVariables[pathItems[i].substring(1)] = routeItems[i];
+    for (var j = 0; j < routeItems.length; j++) {
+      if (pathItems[j].charAt(0) == ':') {
+        routeItem.matchVariables[pathItems[j].substring(1)] = routeItems[j];
       } else {
-        if (routeItems[i] != pathItems[i]) {
+        if (routeItems[j] != pathItems[j]) {
           fullPathMatched = false;
           break;
         }
