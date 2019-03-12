@@ -41,11 +41,18 @@ function MicroserviceRouterRegister(settings) {
   self.isNewAPI = false
   self.cpuUsage = false
   self.reportTimeout = false
+  if(typeof self.server.period != "number") {
+    self.server.period = parseInt(self.server.period)
+    if(!self.server.period) {
+      throw new Error('Priod need to be integer value')
+    }
+  }
   if (!self.cluster.workers) {
     self.debug.debug('Cluster child detected');
     self.receivedStats = {}
     self.cluster.worker.on('message', function(message){
       self.debug.debug('Received message', message);
+      let nowTime = Date.now()
       if (message.type && message.message && message.workerPID) {
         if (message.type == 'mfw_stats') {
           if (!self.receivedStats[message.workerPID]) {
@@ -54,12 +61,15 @@ function MicroserviceRouterRegister(settings) {
             }
           }
           self.receivedStats[message.workerPID].stats = message.message;
-          self.receivedStats[message.workerPID].time = Date.now()
+          self.receivedStats[message.workerPID].time = nowTime
         }
         // clean up old stats for pids that doesnot exists anymore
         let minID = 0
         for (let workerPID in self.receivedStats) {
-          if (self.receivedStats[workerPID].time < Date.now() - self.server.period) {
+          self.debug.debug('minID', minID); 
+          // add extra 1sec to compare due to milisecs diference on time period
+          if (self.receivedStats[workerPID].time < nowTime - self.server.period - 1000) {
+            self.debug.debug('remove workerPID', workerPID, self.receivedStats[workerPID], nowTime - self.server.period); 
             delete self.receivedStats[workerPID]
             continue
           }
@@ -67,28 +77,30 @@ function MicroserviceRouterRegister(settings) {
             minID = self.receivedStats[workerPID].workerID
           }
           
-          if(self.receivedStats[workerPID].workerID
-            && minID > self.receivedStats[workerPID].workerID) {
-            minID = self.receivedStats[workerPID].workerID
+          if(self.receivedStats[workerPID].workerID) {
+            if(minID > self.receivedStats[workerPID].workerID) {
+              minID = self.receivedStats[workerPID].workerID
+            }
           }
         }
-        self.debug.debug('Detect who should send', minID, self.cluster.worker.id);
-        if(minID == self.cluster.worker.id) {
-          if(self.reportTimeout) {
-            clearTimeout(self.reportTimeout)
+        self.debug.debug('Detect who should send', self.receivedStats, minID, self.cluster.worker.id);
+        
+        if(minID === self.cluster.worker.id) { 
+          if(!self.reportTimeout) {
+            self.reportTimeout = setTimeout(function(){
+              self.debug.debug('reportTimeout triggered', minID, self.cluster.worker.id, process.pid);
+              var receivedStats = [];
+              for(let workerPID in self.receivedStats) {
+                receivedStats.push({
+                  stats: self.receivedStats[workerPID].stats,
+                  cpu: self.receivedStats[workerPID].cpu,
+                  loadavg: self.receivedStats[workerPID].loadavg,
+                });
+              }
+              self.emit('report', receivedStats);
+              self.reportTimeout = false
+            },self.server.period)
           }
-          self.reportTimeout = setTimeout(function(){
-            self.debug.debug('reportTimeout triggered');
-            var receivedStats = [];
-            for(let workerPID in self.receivedStats) {
-              receivedStats.push({
-                stats: self.receivedStats[workerPID].stats,
-                cpu: self.receivedStats[workerPID].cpu,
-                loadavg: self.receivedStats[workerPID].loadavg,
-              });
-            }
-            self.emit('report', receivedStats);
-          },self.server.period)
         }
       }
     })
@@ -97,7 +109,7 @@ function MicroserviceRouterRegister(settings) {
       self.debug.debug('timer2 triggered');
     }, self.server.period);
   } else {
-    self.debug.debug('timer triggered');
+    self.debug.debug('isMaster code detected');
     // backward compatibility 1.x
     // we are inside cluster.isMaster
     // Detect if old module uses this code 
@@ -106,16 +118,25 @@ function MicroserviceRouterRegister(settings) {
       self.debug.debug('NewAPI detected');
       self.isNewAPI = true;
     })
+    let checkIn = self.server.period + 3000
+    self.debug.debug('check for failback in', checkIn);
     setTimeout(function(){
+      self.debug.debug('prepare for failback');
       //failback to old API
       if(!self.isNewAPI) {
+        self.debug.debug('old API detected');
         self.collectStats();
-        setInterval(function() {
+        return setInterval(function() {
           self.emit('timer');
           self.debug.debug('timer triggered');
         }, self.server.period);
       }
-    }, self.server.period + 3000);
+      // enable cluster.isMaster collection too.
+      setInterval(function() {
+        self.emit('timer2');
+        self.debug.debug('timer2 master triggered');
+      }, self.server.period);
+    }, checkIn);
   }
 
   self.client = new MicroserviceClient({
@@ -163,7 +184,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
       }
     });
   }
-  self.debug.debug('collect via process memoryUsage & cpuUsage');
+  self.debug.debug('collect via process memoryUsage & cpuUsage', process.pid);
   let cpuPercent = "0"
   if (!self.receivedStats || !self.receivedStats[process.pid]) {
     self.cpuUsage = process.cpuUsage()
@@ -189,6 +210,7 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
     message.workerID = self.cluster.worker.id
   }
   if (!self.cluster.workers) {
+    self.debug.debug('not workers send %s.', message.toString(), process.pid);
     process.send(message);
   } else {
     self.debug.debug('Broadcast message to workers %s.', message.toString());
