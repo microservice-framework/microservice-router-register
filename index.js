@@ -42,7 +42,7 @@ function MicroserviceRouterRegister(settings) {
   self.cpuUsage = false
   self.reportTimeout = false
   if (!self.cluster.workers) {
-    delf.debug.debug('Cluster child detected');
+    self.debug.debug('Cluster child detected');
     self.receivedStats = {}
     self.cluster.worker.on('message', function(message){
       self.debug.debug('Received message', message);
