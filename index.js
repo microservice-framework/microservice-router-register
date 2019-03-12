@@ -45,15 +45,18 @@ function MicroserviceRouterRegister(settings) {
     self.isNewAPI = true
     self.cluster.worker.on('message', function(message){
       if (message.type && message.message && message.workerPID) {
-        /*if(message.workerPID == settings.cluster.worker.id) {
-          return
-        }*/
         if (message.type == 'mfw_stats') {
           if (!self.receivedStats[message.workerPID]) {
             self.receivedStats[message.workerPID] = {}
           }
           self.receivedStats[message.workerPID].stats = message.message;
           self.receivedStats[message.workerPID].time = Date.now()
+        }
+        // clean up old stats for pids that doesnot exists anymore
+        for (let workerPID in self.receivedStats) {
+          if (self.receivedStats[workerPID].time < Date.now() - self.server.period) {
+            delete self.receivedStats[workerPID]
+          }
         }
       }
     })
@@ -80,7 +83,10 @@ function MicroserviceRouterRegister(settings) {
     self.debug.debug('timer triggered');
   }, self.server.period);
 
-  self.collectStats();
+  // backward compatibility 1.x
+  if (settings.cluster.workers) {
+    self.collectStats();
+  }
 }
 
 util.inherits(MicroserviceRouterRegister, EventEmitter);
@@ -125,11 +131,19 @@ MicroserviceRouterRegister.prototype.collectStat = function() {
     loadavg: os.loadavg(),
     cpu: cpuPercent
   }
-  self.cluster.message({
+  let message = {
     type: 'mfw_stats',
     workerPID: self.cluster.worker.process.pid,
     message: stat
-  })
+  }
+  if (!self.cluster.workers) {
+    self.cluster.message(message)
+  } else {
+    self.debug.debug('Broadcast message to workers %s.', message.toString());
+    for (var key in self.cluster.workers) {
+      self.cluster.workers[key].send(message);
+    }
+  }
 }
 
 /**
