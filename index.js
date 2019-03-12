@@ -42,6 +42,7 @@ function MicroserviceRouterRegister(settings) {
   self.cpuUsage = false
   self.reportTimeout = false
   self.isTerminating = false
+  self.intervals = []
   if(typeof self.server.period != "number") {
     self.server.period = parseInt(self.server.period)
     if(!self.server.period) {
@@ -105,10 +106,14 @@ function MicroserviceRouterRegister(settings) {
         }
       }
     })
-    setInterval(function() {
+    let timer2interval = setInterval(function() {
+      if(self.isTerminating) {
+        return
+      }
       self.emit('timer2');
       self.debug.debug('timer2 triggered');
     }, self.server.period);
+    self.intervals.push(timer2interval);
   } else {
     self.debug.debug('isMaster code detected');
     // backward compatibility 1.x
@@ -127,17 +132,27 @@ function MicroserviceRouterRegister(settings) {
       if(!self.isNewAPI) {
         self.debug.debug('old API detected');
         self.collectStats();
-        return setInterval(function() {
+        let timerinterval = setInterval(function() {
+          if(self.isTerminating) {
+            return
+          }
           self.emit('timer');
           self.debug.debug('timer triggered');
         }, self.server.period);
+        self.intervals.push(timerinterval);
+        return
       }
       // enable cluster.isMaster collection too.
-      setInterval(function() {
+      let timer2interval = setInterval(function() {
+        if(self.isTerminating) {
+          return
+        }
         self.emit('timer2');
         self.debug.debug('timer2 master triggered');
       }, self.server.period);
+      self.intervals.push(timer2interval);
     }, checkIn);
+
   }
 
   self.client = new MicroserviceClient({
@@ -161,10 +176,18 @@ function MicroserviceRouterRegister(settings) {
   });
 
   self.on('report', function(stats) {
+    if(self.isTerminating) {
+      return
+    }
     self.reportStats(stats);
   });
 
-  let deleteRegister = function(){
+  let shutDownAction = function(){
+    if(self.intervals.length) {
+      for(let i in self.intervals) {
+        clearInterval(self.intervals[i])
+      }
+    }
     if(self.authData){
       self.debug.log('deleteRegister', process.pid, self.client)
       self.client.delete(self.authData.id, self.authData.token, function(err, answer) {
@@ -176,11 +199,11 @@ function MicroserviceRouterRegister(settings) {
 
   process.on('SIGINT', function() {
     self.isTerminating = true
-    deleteRegister()
+    shutDownAction()
   });
   process.on('SIGTERM', function() {
     self.isTerminating = true
-    deleteRegister()
+    shutDownAction()
   });
 }
 
