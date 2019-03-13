@@ -43,6 +43,7 @@ function MicroserviceRouterRegister(settings) {
   self.reportTimeout = false
   self.isTerminating = false
   self.intervals = []
+  self.timeouts = []
   if(typeof self.server.period != "number") {
     self.server.period = parseInt(self.server.period)
     if(!self.server.period) {
@@ -98,6 +99,7 @@ function MicroserviceRouterRegister(settings) {
               self.emit('report', receivedStats);
               self.reportTimeout = false
             },self.server.period)
+            self.timeouts.push(self.reportTimeout)
           }
         }
       }
@@ -124,7 +126,7 @@ function MicroserviceRouterRegister(settings) {
     })
     let checkIn = self.server.period + 3000
     self.debug.debug('check for failback in', checkIn);
-    setTimeout(function(){
+    let failbackTimer = setTimeout(function(){
       self.debug.debug('prepare for failback');
       //failback to old API
       if(!self.isNewAPI) {
@@ -150,6 +152,7 @@ function MicroserviceRouterRegister(settings) {
       }, self.server.period);
       self.intervals.push(timer2interval);
     }, checkIn);
+    self.timeouts.push(failbackTimer)
 
   }
 
@@ -184,6 +187,11 @@ function MicroserviceRouterRegister(settings) {
     if(self.intervals.length) {
       for(let i in self.intervals) {
         clearInterval(self.intervals[i])
+      }
+    }
+    if(self.timeouts.length) {
+      for(let i in self.timeouts) {
+        clearTimeout(self.timeouts[i])
       }
     }
     if(self.authData){
