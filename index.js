@@ -93,11 +93,7 @@ function MicroserviceRouterRegister(settings) {
               self.debug.debug('reportTimeout triggered', minID, self.cluster.worker.id, process.pid);
               var receivedStats = [];
               for(let workerPID in self.receivedStats) {
-                receivedStats.push({
-                  stats: self.receivedStats[workerPID].stats,
-                  cpu: self.receivedStats[workerPID].cpu,
-                  loadavg: self.receivedStats[workerPID].loadavg,
-                });
+                receivedStats.push(self.receivedStats[workerPID].stats);
               }
               self.emit('report', receivedStats);
               self.reportTimeout = false
