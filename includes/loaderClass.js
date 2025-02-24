@@ -3,10 +3,10 @@
  */
 'use strict';
 
-const EventEmitter = require('events').EventEmitter;
-const util = require('util');
-const MicroserviceClient = require('@microservice-framework/microservice-client');
-const debugF = require('debug');
+import debug from 'debug';
+import { EventEmitter } from 'node:events';
+import MicroserviceClient from "@microservice-framework/microservice-client"
+
 
 /**
  * Constructor.
@@ -14,147 +14,141 @@ const debugF = require('debug');
  */
 function LoaderClass(headers) {
   EventEmitter.call(this);
-  var self = this;
-  self.headers = headers;
-  self.preLoad = [];
-  self.errorResult = [];
-  self.okResult = {};
-  self.processedCount = 0;
-  self.mfwHeaders = {};
-  self.loadersPrepared = 0;
-  self.loadersToPrepare = 0;
+  this.headers = headers;
+  this.preLoad = [];
+  this.errorResult = [];
+  this.okResult = {};
+  this.processedCount = 0;
+  this.mfwHeaders = {};
+  this.loadersPrepared = 0;
+  this.loadersToPrepare = 0;
 
-  for (var name in self.headers) {
-    if (name.substr(0, 4) == 'mfw-') {
-      self.mfwHeaders[name.substr(4)] = self.headers[name];
-      self.loadersToPrepare = self.loadersToPrepare + 1;
+  for (let name in this.headers) {
+    if (name.substring(0, 4) == 'mfw-') {
+      this.mfwHeaders[name.substring(4)] = this.headers[name];
+      this.loadersToPrepare = this.loadersToPrepare + 1;
     }
   }
 
-  self.on('itemError', function(err, preLoad) {
-    self.debug.debug('itemError %O %O', err, preLoad);
-    self.errorResult.push({
+  this.on('itemError',  ( preLoad, err ) => {
+    this.debug.debug('itemError %O %O', err, preLoad);
+    this.errorResult.push({
       error: err,
-      pairSearch: preLoad
+      pairSearch: preLoad,
     });
-    self.processedCount = self.processedCount + 1;
-    if (self.processedCount == self.preLoad.length) {
-      self.emit('error', self.errorResult);
+    this.processedCount = this.processedCount + 1;
+    if (this.processedCount == this.preLoad.length) {
+      this.emit('error', this.errorResult);
     }
   });
 
-  self.on('itemOk', function(preLoad, searchResult) {
-    self.debug.debug('itemOk %O result: %O', preLoad, searchResult);
+  this.on('itemOk', (preLoad, searchResult) => {
+    this.debug.debug('itemOk %O result: %O', preLoad, searchResult);
 
-    self.okResult[preLoad.name] = searchResult;
-    self.processedCount = self.processedCount + 1;
-    if (self.processedCount == self.preLoad.length) {
-      if (self.errorResult.length > 0) {
-        self.emit('error', self.errorResult);
+    this.okResult[preLoad.name] = searchResult;
+    this.processedCount = this.processedCount + 1;
+    if (this.processedCount == this.preLoad.length) {
+      if (this.errorResult.length > 0) {
+        this.emit('error', this.errorResult);
       } else {
-        self.emit('done', self.okResult);
+        this.emit('done', this.okResult);
       }
     }
   });
-  self.on('loaderFailed', function(name) {
-    self.debug.debug('loader failed %s = %s', name, self.mfwHeaders[name]);
-    delete self.mfwHeaders[name];
-    self.loadersPrepared = self.loadersPrepared + 1;
-    if (self.loadersToPrepare == self.loadersPrepared) {
-      self.processLoaders();
+  this.on('loaderFailed',  (name) => {
+    this.debug.debug('loader failed %s = %s', name, this.mfwHeaders[name]);
+    delete this.mfwHeaders[name];
+    this.loadersPrepared = this.loadersPrepared + 1;
+    if (this.loadersToPrepare == this.loadersPrepared) {
+      this.processLoaders();
     }
   });
-  self.on('loaderSkip', function(name) {
-    self.debug.debug('loader Skip %s = %s', name, self.mfwHeaders[name]);
-    delete self.mfwHeaders[name];
-    self.loadersPrepared = self.loadersPrepared + 1;
-    if (self.loadersToPrepare == self.loadersPrepared) {
-      self.processLoaders();
+  this.on('loaderSkip',  (name) => {
+    this.debug.debug('loader Skip %s = %s', name, this.mfwHeaders[name]);
+    delete this.mfwHeaders[name];
+    this.loadersPrepared = this.loadersPrepared + 1;
+    if (this.loadersToPrepare == this.loadersPrepared) {
+      this.processLoaders();
     }
-
   });
-  self.on('loaderReady', function(name, clientSettings, searchBy) {
-    self.debug.debug('loader ready %s = %s', name, self.mfwHeaders[name]);
-    let value = self.mfwHeaders[name];
-    self.preLoad.push({
+  this.on('loaderReady', (name, clientSettings, searchBy) => {
+    this.debug.debug('loader ready %s = %s', name, this.mfwHeaders[name]);
+    let value = this.mfwHeaders[name];
+    this.preLoad.push({
       name: name,
       value: value,
       clientSettings: clientSettings,
       searchBy: searchBy,
     });
-    self.loadersPrepared = self.loadersPrepared + 1;
-    if (self.loadersToPrepare == self.loadersPrepared) {
-      self.processLoaders();
+    this.loadersPrepared = this.loadersPrepared + 1;
+    if (this.loadersToPrepare == this.loadersPrepared) {
+      this.processLoaders();
     }
   });
-
 }
-util.inherits(LoaderClass, EventEmitter);
 
+// Inherit from EventEmitter
+Object.setPrototypeOf(LoaderClass.prototype, EventEmitter.prototype);
 
 LoaderClass.prototype.debug = {
-  debug: debugF('loader:debug')
+  debug: debug('loader:debug'),
 };
 
 /**
  * Entry point.
  */
-LoaderClass.prototype.process = function() {
-  var self = this;
-  self.debug.debug('Processing %s %O', self.loadersToPrepare, self.mfwHeaders);
-  if (self.loadersToPrepare == 0) {
-    return self.emit('done', false);
+LoaderClass.prototype.process = function () {
+  this.debug.debug('Processing %s %O', this.loadersToPrepare, this.mfwHeaders);
+  if (this.loadersToPrepare == 0) {
+    return this.emit('done', false);
   }
-  for (var name in self.mfwHeaders) {
-    self.preProcessLoader(name);
+  for (let name in this.mfwHeaders) {
+    this.preProcessLoader(name);
   }
-}
+};
 /**
  * Check module status.
  *
  * @param {object} module - module data.
  */
-LoaderClass.prototype.processLoaders = function() {
-  var self = this;
-  self.debug.debug('Processing %s %O', self.preLoad.length, self.preLoad);
+LoaderClass.prototype.processLoaders = function () {
+  this.debug.debug('Processing %s %O', this.preLoad.length, this.preLoad);
 
-  if (self.preLoad.length == 0) {
-    return self.emit('done', false);
+  if (this.preLoad.length == 0) {
+    return this.emit('done', false);
   }
-  for (var i in self.preLoad) {
-    var preLoad = self.preLoad[i];
-    self.processPreLoad(preLoad);
+  for (let i in this.preLoad) {
+    let preLoad = this.preLoad[i];
+    this.processPreLoad(preLoad);
   }
-}
+};
 
 /**
  * Check module status.
  *
  * @param {object} module - module data.
  */
-LoaderClass.prototype.preProcessLoader = function(name) {
-  var self = this;
-  self.getLoaderSettings(name, function(err, clientSettings, searchBy) {
-    if (err) {
-      if (err == 'skip') {
-        return self.emit('loaderSkip', name);
-      }
-      return self.emit('loaderFailed', name);
-    }
-    return self.emit('loaderReady', name, clientSettings, searchBy);
-  })
-}
+LoaderClass.prototype.preProcessLoader = async function (name) {
+
+  let loaded = await this.getLoaderSettings(name);
+  if(loader.skip) {
+    return this.emit('loaderSkip', name);
+  }
+  if(loaded.error) {
+    return this.emit('loaderFailed', name);
+  }
+  this.emit('loaderReady', loaded);
+};
 
 /**
  * Wrapper to get secure access to service by path.
  */
-LoaderClass.prototype.processPreLoad = function(preLoad) {
-  var self = this;
-  self.debug.debug('Process preLoad %O', preLoad);
+LoaderClass.prototype.processPreLoad = function (preLoad) {
+  this.debug.debug('Process preLoad %O', preLoad);
   let msClient = new MicroserviceClient(preLoad.clientSettings);
   if (preLoad.clientSettings.secureKey) {
     var searchQuery = {};
-    switch (preLoad.searchBy.type){
+    switch (preLoad.searchBy.type) {
       case 'number': {
         searchQuery[preLoad.searchBy.field] = parseInt(preLoad.value);
         break;
@@ -167,77 +161,89 @@ LoaderClass.prototype.processPreLoad = function(preLoad) {
         searchQuery[preLoad.searchBy.field] = preLoad.value;
       }
     }
-    msClient.search(searchQuery, function(err, searchResult) {
-      if (err) {
-        return self.emit('itemError', err, preLoad);
+    return msClient.search(searchQuery).then((response) => {
+      if(response.error) {
+        this.emit('itemError', preLoad, response.error)
+        return
       }
-      self.emit('itemOk', preLoad, searchResult[0]);
-    });
-    return;
+      this.emit('itemOk', preLoad, response.answer[0]);
+    })
   }
-  msClient.get(preLoad.value, function(err, searchResult) {
-    if (err) {
-      return self.emit('itemError', err, preLoad);
+  msClient.get(preLoad.value).then((response) => {
+    if(response.error) {
+      this.emit('itemError', preLoad, response.error)
+      return
     }
-    self.emit('itemOk', preLoad, searchResult);
-  });
-}
+    this.emit('itemOk', preLoad, response.answer);
+  })
+};
 
 /**
  * Wrapper to get secure access to service by path.
  */
-LoaderClass.prototype.getLoaderSettings = function(name, callback) {
+LoaderClass.prototype.getLoaderSettings = async function (name) {
   var self = this;
   let routerServer = new MicroserviceClient({
     URL: process.env.ROUTER_URL,
-    secureKey: process.env.ROUTER_SECRET
+    secureKey: process.env.ROUTER_SECRET,
   });
   var searchQuery = {};
   searchQuery['provides.:' + name] = {
-    $exists: true
+    $exists: true,
+  };
+  let routes = await routerServer.search(searchQuery)
+
+  if(routes.error) {
+    return {
+      name: name,
+      error: routes.error
+    }
   }
 
-  routerServer.search(searchQuery, function(err, routes) {
-      if (err) {
-        return callback(err);
+  if (routes[0].scope == process.env.SCOPE) {
+    return {
+      name: name,
+      skip: true
+    };
+  }
+
+  let loaderURL = routes[0].path[0].split('/');
+  let resultPath = [];
+  for (var i in loaderURL) {
+    if (loaderURL[i].charAt(0) == ':') {
+      let urlItem = loaderURL[i].substr(1);
+      if (this.mfwHeaders[urlItem]) {
+        resultPath.push(this.mfwHeaders[urlItem]);
+        continue;
       }
-      if (routes[0].scope == process.env.SCOPE) {
-        return callback('skip');
-      }
-      let loaderURL = routes[0].path[0].split('/');
-      let resultPath = [];
-      for (var i in loaderURL) {
-        if (loaderURL[i].charAt(0) == ':') {
-          let urlItem = loaderURL[i].substr(1);
-          if (self.mfwHeaders[urlItem]) {
-            resultPath.push(self.mfwHeaders[urlItem]);
-            continue;
-          }
-        }
-        resultPath.push(loaderURL[i]);
-      }
-      if (process.env.ROUTER_PROXY_URL.charAt(process.env.ROUTER_PROXY_URL.length - 1) == '/') {
-        resultPath = process.env.ROUTER_PROXY_URL + resultPath.join('/')
-      } else {
-        resultPath = process.env.ROUTER_PROXY_URL + '/' + resultPath.join('/')
-      }
-      var clientSettings = {
-        URL: resultPath
-      }
-      let accessToken = false;
-      if (self.headers.access_token) {
-        accessToken = self.headers.access_token;
-      }
-      if (self.headers['Access-Token']) {
-        accessToken = self.headers['Access-Token'];
-      }
-      if (accessToken) {
-        clientSettings.accessToken = accessToken;
-      } else {
-        clientSettings.secureKey = routes[0].secureKey;
-      }
-      callback(null, clientSettings, routes[0].provides[':' + name]);
-    });
-}
+    }
+    resultPath.push(loaderURL[i]);
+  }
+  if (process.env.ROUTER_PROXY_URL.charAt(process.env.ROUTER_PROXY_URL.length - 1) == '/') {
+    resultPath = process.env.ROUTER_PROXY_URL + resultPath.join('/');
+  } else {
+    resultPath = process.env.ROUTER_PROXY_URL + '/' + resultPath.join('/');
+  }
+  var clientSettings = {
+    URL: resultPath,
+  };
+  let accessToken = false;
+  if (this.headers.access_token) {
+    accessToken = this.headers.access_token;
+  }
+  if (this.headers['Access-Token']) {
+    accessToken = this.headers['Access-Token'];
+  }
+  if (accessToken) {
+    clientSettings.accessToken = accessToken;
+  } else {
+    clientSettings.secureKey = routes[0].secureKey;
+  }
+  return {
+    name: name,
+    client: clientSettings,
+    searchBy: routes[0].provides[':' + name]
+  }
+};
 
 module.exports = LoaderClass;

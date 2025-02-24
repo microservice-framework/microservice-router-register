@@ -2,3 +2,4 @@ node_modules
 datastore
 .env
 pidfile
+yarn.lock
