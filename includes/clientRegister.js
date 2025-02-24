@@ -12,9 +12,20 @@ import debug from 'debug';
  * Constructor.
  *   Prepare data for test.
  */
-function ClientRegister(headers) {
+function ClientRegister(settings) {
   EventEmitter.call(this);
-
+  
+  this.settings = settings;
+  this.cluster = settings.cluster;
+  this.route = settings.route;
+  this.authData = false
+  this.isNewAPI = false
+  this.cpuUsage = false
+  this.reportTimeout = false
+  this.isTerminating = false
+  this.intervals = []
+  this.timeouts = []
+  
   
   this.server = {
     url: process.env.ROUTER_URL,
@@ -71,6 +82,15 @@ function ClientRegister(headers) {
         this.debug.log('deleted', err, answer)
       })
     }
+  }
+  process.on('SIGINT', () => {
+    this.isTerminating = true
+    shutDownAction()
+  });
+  process.on('SIGTERM', () => {
+    this.isTerminating = true
+    shutDownAction()
+  });
 }
 
 // Inherit from EventEmitter

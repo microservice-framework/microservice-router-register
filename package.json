@@ -23,6 +23,8 @@
     "debug": "^4.4.0"
   },
   "devDependencies": {
+    "@microservice-framework/microservice": "^3.0.0",
+    "@microservice-framework/microservice-cluster": "^3.0.1",
     "dotenv": "^16.4.7",
     "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.0.1",
