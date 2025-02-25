@@ -39,7 +39,14 @@ const cluster = new Cluster({
     GET: ms.get.bind(ms),
     PUT: ms.put.bind(ms),
     DELETE: ms.delete.bind(ms),
-    SEARCH: ms.search.bind(ms),
+    SEARCH: async function(data, request) {
+
+      if(request.eh) {
+        console.log('eh!', request.eh)
+      }
+
+      return ms.search(data, request)
+    },
     OPTIONS: ms.options.bind(ms),
     //PATCH: ms.aggregate.bind(ms),
   },
