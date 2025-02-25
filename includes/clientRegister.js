@@ -274,6 +274,7 @@ ClientRegister.prototype.reportStats = function(stats) {
   this.debug.debug('Update stats on router', this.authData);
   this.client.put(this.authData.id, this.authData.token, { metrics: stats}).then((response) => {
     if(response.error) {
+      this.authData = false
       this.debug.log('Router server is not available.')
       this.debug.debug('Router responce %O', response.error);
       return this.reportStats(stats);
