@@ -1,11 +1,10 @@
 'use strict';
 
+import os from 'node:os'
 import debug from 'debug';
 import { EventEmitter } from 'node:events';
 import MicroserviceClient from "@microservice-framework/microservice-client"
-import os from 'node:os'
-import { EventEmitter } from 'node:events';
-import debug from 'debug';
+
 
 
 /**
@@ -65,23 +64,7 @@ function ClientRegister(settings) {
   });
 
   let shutDownAction = () => {
-    if(this.intervals.length) {
-      for(let i in this.intervals) {
-        clearInterval(this.intervals[i])
-      }
-    }
-    if(this.timeouts.length) {
-      for(let i in this.timeouts) {
-        clearTimeout(this.timeouts[i])
-      }
-    }
-    if(this.authData){
-      this.debug.log('deleteRegister', process.pid, this.client)
-      this.client.delete(this.authData.id, this.authData.token).then((response) =>{
-        this.authData = false;
-        this.debug.log('deleted', err, answer)
-      })
-    }
+    
   }
   process.on('SIGINT', () => {
     this.isTerminating = true
@@ -100,7 +83,26 @@ ClientRegister.prototype.debug = {
   log: debug('microservice-router-register:log'),
   debug: debug('microservice-router-register:debug'),
 };
-
+ClientRegister.prototype.shutdown = function(){
+  this.isTerminating = true
+  if(this.intervals.length) {
+    for(let i in this.intervals) {
+      clearInterval(this.intervals[i])
+    }
+  }
+  if(this.timeouts.length) {
+    for(let i in this.timeouts) {
+      clearTimeout(this.timeouts[i])
+    }
+  }
+  if(this.authData){
+    this.debug.log('deleteRegister', process.pid, this.client)
+    this.client.delete(this.authData.id, this.authData.token).then((response) =>{
+      this.authData = false;
+      this.debug.log('deleted', err, answer)
+    })
+  }
+}
 ClientRegister.prototype.init = function() {
   if (!this.cluster.workers) {
     this.debug.debug('Cluster child detected');
@@ -273,8 +275,10 @@ ClientRegister.prototype.reportStats = function(stats) {
   this.client.put(this.authData.id, this.authData.token, { metrics: stats}).then((response) => {
     if(response.error) {
       this.debug.log('Router server is not available.')
-      this.debug.debug('Router responce %O.', err);
-      return this.reportStats(stats);;
+      this.debug.debug('Router responce %O', response.error);
+      return this.reportStats(stats);
     }
   })
 }
+
+export default ClientRegister

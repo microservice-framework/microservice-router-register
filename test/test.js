@@ -1,7 +1,6 @@
 import {ClientRegister} from "../index.js"
 
 import Microservice from '@microservice-framework/microservice';
-
 import Cluster from '@microservice-framework/microservice-cluster';
 
 // Load environment variables from .env file
@@ -23,16 +22,7 @@ const cluster = new Cluster({
     request.test = true;
     return false;
   },
-  singleton: function (isStart, variables) {
-
-    
-    console.log('singleton', isStart, variables);
-    if (isStart) {
-      variables({ test: 1 });
-    } else {
-      process.exit(0);
-    }
-  },
+  singleton: RegisterLoader,
   init: function (callback) {
     callback({ test: 1 });
     console.log('init');
@@ -47,22 +37,26 @@ const cluster = new Cluster({
     GET: ms.get.bind(ms),
     PUT: ms.put.bind(ms),
     DELETE: ms.delete.bind(ms),
-    SEARCH: ms.aggregate.bind(ms),
+    SEARCH: ms.search.bind(ms),
     OPTIONS: ms.options.bind(ms),
-    PATCH: ms.aggregate.bind(ms),
+    //PATCH: ms.aggregate.bind(ms),
   },
 });
 
 function RegisterLoader(isStart, variables){
-  let register = false
+  //console.log('this', this)
+  let cluster = this;
   if(isStart) {
-    register = new MicroserviceRouterRegister({
+    let register = new ClientRegister({
       route: {
         path: [process.env.SELF_PATH],
         url: process.env.SELF_URL,
         secureKey: process.env.SECURE_KEY,
       },
-      cluster: cluster
+      cluster: cluster.cluster
     });
+    variables({register: register})
+  } else {
+    variables.register.shutdown()
   }
 }

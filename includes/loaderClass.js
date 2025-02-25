@@ -246,4 +246,4 @@ LoaderClass.prototype.getLoaderSettings = async function (name) {
   }
 };
 
-module.exports = LoaderClass;
+export default LoaderClass
