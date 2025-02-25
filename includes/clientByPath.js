@@ -1,11 +1,10 @@
-import MicroserviceClient from "@microservice-framework/microservice-client"
-import debugF from "debug"
-var clientCache = {}
-
+import MicroserviceClient from '@microservice-framework/microservice-client';
+import debugF from 'debug';
+var clientCache = {};
 
 const debug = {
   log: debugF('client-search:log'),
-  debug: debugF('client-search:debug')
+  debug: debugF('client-search:debug'),
 };
 
 /**
@@ -60,7 +59,7 @@ function FindTarget(routes, route, callback) {
   let availableRoutes = [];
   for (let i in routes) {
     if (routes[i].type && routes[i].type != 'handler') {
-      continue
+      continue;
     }
     routes[i].matchVariables = {};
     if (matchRoute(route, routes[i])) {
@@ -70,44 +69,44 @@ function FindTarget(routes, route, callback) {
   debug.debug('Available routes for %s %O', route, availableRoutes);
   if (availableRoutes.length == 0) {
     debug.debug('Not found for %s', route);
-    throw new Error('Endpoint not found')
+    throw new Error('Endpoint not found');
   }
   if (availableRoutes.length == 1) {
     return callback(null, availableRoutes.pop());
   }
 
-  let random = Math.floor(Math.random() * (availableRoutes.length) + 1) - 1;
+  let random = Math.floor(Math.random() * availableRoutes.length + 1) - 1;
   debug.log(availableRoutes[random]);
   return callback(null, availableRoutes[random]);
 }
 
-export default async function(pathURL, accessToken) {
-  if(clientCache[pathURL]) {
-    return clientCache[pathURL]
+export default async function (pathURL, accessToken) {
+  if (clientCache[pathURL]) {
+    return clientCache[pathURL];
   }
 
   let routerServer = new MicroserviceClient({
     URL: process.env.ROUTER_URL,
-    secureKey: process.env.ROUTER_SECRET
+    secureKey: process.env.ROUTER_SECRET,
   });
 
   let routes = await routerServer.search({});
-  if(routes.error) {
-    return routes.error
+  if (routes.error) {
+    return routes.error;
   }
   try {
-    let router = FindTarget(routes, pathURL)
+    let router = FindTarget(routes, pathURL);
     let clientSettings = {
-      URL: process.env.ROUTER_PROXY_URL + '/' + pathURL
-    }
+      URL: process.env.ROUTER_PROXY_URL + '/' + pathURL,
+    };
     if (accessToken) {
       clientSettings.accessToken = accessToken;
     } else {
       clientSettings.secureKey = router.secureKey;
     }
     clientCache[pathURL] = new MicroserviceClient(clientSettings);
-    return clientCache[pathURL]
-  } catch(err) {
+    return clientCache[pathURL];
+  } catch (err) {
     return false;
   }
 }

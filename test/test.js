@@ -1,4 +1,4 @@
-import {ClientRegister} from "../index.js"
+import { ClientRegister, loader } from '../index.js';
 
 import Microservice from '@microservice-framework/microservice';
 import Cluster from '@microservice-framework/microservice-cluster';
@@ -18,7 +18,9 @@ let ms = new Microservice({
 
 const cluster = new Cluster({
   loader: async function (request) {
-    console.log('loader', request.url);
+    console.log('loader', request);
+    let answer = await loader(request);
+    console.log('loader:status', answer);
     request.test = true;
     return false;
   },
@@ -43,20 +45,20 @@ const cluster = new Cluster({
   },
 });
 
-function RegisterLoader(isStart, variables){
+function RegisterLoader(isStart, variables) {
   //console.log('this', this)
   let cluster = this;
-  if(isStart) {
+  if (isStart) {
     let register = new ClientRegister({
       route: {
-        path: [process.env.SELF_PATH],
+        path: [process.env.SELF_PATH, 'eh/:eh/test'],
         url: process.env.SELF_URL,
         secureKey: process.env.SECURE_KEY,
       },
-      cluster: cluster.cluster
+      cluster: cluster.cluster,
     });
-    variables({register: register})
+    variables({ register: register });
   } else {
-    variables.register.shutdown()
+    variables.register.shutdown();
   }
 }
