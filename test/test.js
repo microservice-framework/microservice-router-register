@@ -1,4 +1,4 @@
-import { ClientRegister, loader } from '../index.js';
+import { ClientRegister, loader, clientByPath } from '../index.js';
 
 import Microservice from '@microservice-framework/microservice';
 import Cluster from '@microservice-framework/microservice-cluster';
@@ -39,13 +39,16 @@ const cluster = new Cluster({
     GET: ms.get.bind(ms),
     PUT: ms.put.bind(ms),
     DELETE: ms.delete.bind(ms),
-    SEARCH: async function(data, request) {
-
-      if(request.eh) {
-        console.log('eh!', request.eh)
+    SEARCH: async function (data, request) {
+      if (request.eh) {
+        console.log('eh!', request.eh);
+        let ehClient = await clientByPath('eh');
+        console.log('ehClient', ehClient);
+        let response = await ehClient.get(request.eh.id, request.eh.token);
+        console.log('eh!ehClient:response', response);
       }
 
-      return ms.search(data, request)
+      return ms.search(data, request);
     },
     OPTIONS: ms.options.bind(ms),
     //PATCH: ms.aggregate.bind(ms),

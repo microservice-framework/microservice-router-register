@@ -5,6 +5,7 @@ var clientCache = {};
 const debug = {
   log: debugF('client-search:log'),
   debug: debugF('client-search:debug'),
+  error: debugF('client-search:error'),
 };
 
 /**
@@ -53,7 +54,7 @@ function matchRoute(route, routeItem) {
 /**
  * Find target URL.
  */
-function FindTarget(routes, route, callback) {
+function FindTarget(routes, route) {
   debug.debug('Find route %s', route);
 
   let availableRoutes = [];
@@ -72,12 +73,12 @@ function FindTarget(routes, route, callback) {
     throw new Error('Endpoint not found');
   }
   if (availableRoutes.length == 1) {
-    return callback(null, availableRoutes.pop());
+    return availableRoutes.pop();
   }
 
   let random = Math.floor(Math.random() * availableRoutes.length + 1) - 1;
   debug.log(availableRoutes[random]);
-  return callback(null, availableRoutes[random]);
+  return availableRoutes[random];
 }
 
 export default async function (pathURL, accessToken) {
@@ -90,10 +91,11 @@ export default async function (pathURL, accessToken) {
     secureKey: process.env.ROUTER_SECRET,
   });
 
-  let routes = await routerServer.search({});
-  if (routes.error) {
-    return routes.error;
+  let response = await routerServer.search({});
+  if (response.error) {
+    return response.error;
   }
+  let routes = response.answer;
   try {
     let router = FindTarget(routes, pathURL);
     let clientSettings = {
@@ -107,6 +109,7 @@ export default async function (pathURL, accessToken) {
     clientCache[pathURL] = new MicroserviceClient(clientSettings);
     return clientCache[pathURL];
   } catch (err) {
+    debug.error('err', err);
     return false;
   }
 }
