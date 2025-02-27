@@ -12,62 +12,35 @@ import MicroserviceClient from '@microservice-framework/microservice-client';
 function ClientRegister(settings) {
   EventEmitter.call(this);
 
-  this.settings = settings;
   this.cluster = settings.cluster;
   this.route = settings.route;
   this.authData = false;
-  this.isNewAPI = false;
   this.cpuUsage = false;
-  this.reportTimeout = false;
-  this.isTerminating = false;
-  this.intervals = [];
-  this.timeouts = [];
+  this.receivedStats = {}
+  this.collectInterval = false
+  this.reportInterval = false
 
   this.server = {
     url: process.env.ROUTER_URL,
     secureKey: process.env.ROUTER_SECRET,
     period: parseInt(process.env.ROUTER_PERIOD),
   };
-
   if (!this.server.period) {
     throw new Error('Priod need to be integer value');
   }
-
-  this.init();
-
   this.client = new MicroserviceClient({
     URL: this.server.url,
     secureKey: this.server.secureKey,
   });
-  this.on('timer2', () => {
-    if (this.isTerminating) {
-      return;
-    }
-    return this.collectStat();
-  });
-  this.on('timer', () => {
-    if (this.isTerminating) {
-      return;
-    }
-    this.collectStats();
-  });
-
-  this.on('report', (stats) => {
-    if (this.isTerminating) {
-      return;
-    }
-    this.reportStats(stats);
-  });
-
-  let shutDownAction = () => {};
   process.on('SIGINT', () => {
-    this.isTerminating = true;
-    shutDownAction();
+    this.shutdown();
   });
   process.on('SIGTERM', () => {
-    this.isTerminating = true;
-    shutDownAction();
+    this.shutdown();
   });
+
+  this.init()
+  return this
 }
 
 // Inherit from EventEmitter
@@ -77,34 +50,48 @@ ClientRegister.prototype.debug = {
   log: debug('microservice-router-register:log'),
   debug: debug('microservice-router-register:debug'),
 };
+
 ClientRegister.prototype.shutdown = function () {
   this.isTerminating = true;
-  if (this.intervals.length) {
-    for (let i in this.intervals) {
-      clearInterval(this.intervals[i]);
-    }
+
+  if(this.collectInterval) {
+    clearInterval(this.collectInterval)
   }
-  if (this.timeouts.length) {
-    for (let i in this.timeouts) {
-      clearTimeout(this.timeouts[i]);
-    }
+  if(this.reportInterval) {
+    clearInterval(this.reportInterval)
   }
+
   if (this.authData) {
-    this.debug.log('deleteRegister', process.pid, this.client);
+    this.debug.log('deleteRegister', process.pid);
     this.client.delete(this.authData.id, this.authData.token).then((response) => {
       this.authData = false;
-      this.debug.log('deleted', err, answer);
+      this.debug.log('deleted from router');
     });
   }
 };
+
 ClientRegister.prototype.init = function () {
-  if (!this.cluster.workers) {
+  if (this.cluster.isWorker) {
     this.debug.debug('Cluster child detected');
-    this.receivedStats = {};
-    this.cluster.worker.on('message', (message) => {
+    this.collectInterval = setInterval(()=> { 
+      if (this.isTerminating) {
+        return;
+      }
+      this.collectStat()
+    }, this.server.period)
+  } else {
+    this.debug.debug('Master detected');
+    this.reportInterval = setInterval(()=> { 
+      if (this.isTerminating) {
+        return;
+      }
+      this.reportStats()
+    }, this.server.period)
+    this.cluster.on('message', (worker, message) => {
+      this.debug.debug('Received message %O', message);
+      let nowTime = Date.now();
+      // if we received
       if (message.type && message.message && message.workerPID) {
-        let nowTime = Date.now();
-        this.debug.debug('Received message', message);
         if (message.type == 'mfw_stats') {
           if (!this.receivedStats[message.workerPID]) {
             this.receivedStats[message.workerPID] = {
@@ -114,99 +101,24 @@ ClientRegister.prototype.init = function () {
           this.receivedStats[message.workerPID].stats = message.message;
           this.receivedStats[message.workerPID].time = nowTime;
         }
-        // clean up old stats for pids that doesnot exists anymore
-        let minID = 0;
-        for (let workerPID in this.receivedStats) {
-          this.debug.debug('minID', minID);
-          // add extra 1sec to compare due to milisecs diference on time period
-          if (this.receivedStats[workerPID].time < nowTime - this.server.period - 1000) {
-            this.debug.debug('remove workerPID', workerPID, this.receivedStats[workerPID], nowTime - this.server.period);
-            delete this.receivedStats[workerPID];
-            continue;
-          }
-          if (minID == 0 && this.receivedStats[workerPID].workerID) {
-            minID = this.receivedStats[workerPID].workerID;
-          }
-
-          if (this.receivedStats[workerPID].workerID) {
-            if (minID > this.receivedStats[workerPID].workerID) {
-              minID = this.receivedStats[workerPID].workerID;
-            }
-          }
-        }
-        this.debug.debug('Detect who should send', this.receivedStats, minID, this.cluster.worker.id);
-
-        if (minID === this.cluster.worker.id) {
-          if (!this.reportTimeout) {
-            this.reportTimeout = setTimeout(() => {
-              this.debug.debug('reportTimeout triggered', minID, this.cluster.worker.id, process.pid);
-              var receivedStats = [];
-              for (let workerPID in this.receivedStats) {
-                receivedStats.push(this.receivedStats[workerPID].stats);
-              }
-              this.emit('report', receivedStats);
-              this.reportTimeout = false;
-            }, this.server.period);
-            this.timeouts.push(this.reportTimeout);
-          }
+      }
+      this.debug.debug('Delete old stats from dead workers');
+      for (let workerPID in this.receivedStats) {
+        // add extra 1sec to compare due to milisecs diference on time period
+        if (this.receivedStats[workerPID].time < nowTime - this.server.period - 1000) {
+          this.debug.debug('remove workerPID', workerPID, this.receivedStats[workerPID], nowTime - this.server.period);
+          delete this.receivedStats[workerPID];
+          continue;
         }
       }
     });
-    let timer2interval = setInterval(() => {
-      if (this.isTerminating) {
-        return;
-      }
-      this.emit('timer2');
-      this.debug.debug('timer2 triggered');
-    }, this.server.period);
-    this.intervals.push(timer2interval);
-  } else {
-    this.debug.debug('isMaster code detected');
-    // backward compatibility 1.x
-    // we are inside cluster.isMaster
-    // Detect if old module uses this code
-    this.cluster.on('message', (worker, message) => {
-      // if we received
-      if (message.type && message.type == 'mfw_stats') {
-        this.debug.debug('NewAPI detected');
-        this.isNewAPI = true;
-      }
-    });
-    let checkIn = this.server.period + 3000;
-    this.debug.debug('check for failback in', checkIn);
-    let failbackTimer = setTimeout(() => {
-      this.debug.debug('prepare for failback');
-      //failback to old API
-      if (!this.isNewAPI) {
-        this.debug.debug('old API detected');
-        this.collectStats();
-        let timerinterval = setInterval(() => {
-          if (this.isTerminating) {
-            return;
-          }
-          this.emit('timer');
-          this.debug.debug('timer triggered');
-        }, this.server.period);
-        this.intervals.push(timerinterval);
-        return;
-      }
-      // enable cluster.isMaster collection too.
-      let timer2interval = setInterval(() => {
-        if (this.isTerminating) {
-          return;
-        }
-        this.emit('timer2');
-        this.debug.debug('timer2 master triggered');
-      }, this.server.period);
-      this.intervals.push(timer2interval);
-    }, checkIn);
-    this.timeouts.push(failbackTimer);
   }
-};
+}
 
 ClientRegister.prototype.collectStat = function () {
   this.debug.debug('collect via process memoryUsage & cpuUsage', process.pid);
   let cpuPercent = '0';
+  
   if (!this.receivedStats || !this.receivedStats[process.pid]) {
     this.cpuUsage = process.cpuUsage();
     cpuPercent = (100 * (this.cpuUsage.user + this.cpuUsage.system)) / process.uptime() / 1000000;
@@ -217,18 +129,31 @@ ClientRegister.prototype.collectStat = function () {
     cpuPercent = (100 * (this.cpuUsage.user + this.cpuUsage.system)) / timePeriod / 1000;
     cpuPercent = cpuPercent.toFixed(2);
   }
+
   let stat = {
     memory: process.memoryUsage().rss / 1024 / 1024,
     loadavg: os.loadavg(),
     cpu: cpuPercent,
   };
+
   let message = {
     type: 'mfw_stats',
     workerPID: process.pid,
     message: stat,
   };
-  if (this.cluster.worker) {
+
+  if (this.cluster.isWorker) {
     message.workerID = this.cluster.worker.id;
+    process.send(message);
+  } else {
+    // just save data
+    if (!this.receivedStats[message.workerPID]) {
+      this.receivedStats[message.workerPID] = {
+        workerID: message.workerID,
+      };
+    }
+    this.receivedStats[message.workerPID].stats = message.message;
+    this.receivedStats[message.workerPID].time = Date.now();
   }
   if (!this.cluster.workers) {
     this.debug.debug('not workers send %s.', message.toString(), process.pid);
@@ -241,15 +166,22 @@ ClientRegister.prototype.collectStat = function () {
   }
 };
 
+
 /**
  * Report Stats.
  */
-ClientRegister.prototype.reportStats = function (stats) {
+ClientRegister.prototype.reportStats = function () {
   this.debug.debug('report stats');
+  
+  var receivedStats = [];
+  for (let workerPID in this.receivedStats) {
+    receivedStats.push(this.receivedStats[workerPID].stats);
+  }
+  this.debug.debug('reportTimeout triggered', receivedStats);
   if (!this.authData) {
     this.debug.debug('register on router');
     var router = this.route;
-    router.metrics = stats;
+    router.metrics = receivedStats;
     if (!router.scope && process.env.SCOPE) {
       router.scope = process.env.SCOPE;
     }
@@ -264,12 +196,12 @@ ClientRegister.prototype.reportStats = function (stats) {
     return;
   }
   this.debug.debug('Update stats on router', this.authData);
-  this.client.put(this.authData.id, this.authData.token, { metrics: stats }).then((response) => {
+  this.client.put(this.authData.id, this.authData.token, { metrics: receivedStats }).then((response) => {
     if (response.error) {
       this.authData = false;
       this.debug.log('Router server is not available.');
       this.debug.debug('Router responce %O', response.error);
-      return this.reportStats(stats);
+      return this.reportStats();
     }
   });
 };

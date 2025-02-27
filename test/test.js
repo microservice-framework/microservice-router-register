@@ -24,14 +24,14 @@ const cluster = new Cluster({
     request.test = true;
     return false;
   },
-  singleton: RegisterLoader,
+  //singleton: RegisterLoader,
   init: function (callback) {
     callback({ test: 1 });
     console.log('init');
   },
   shutdown: function (init) {
     console.log('shutdown', init);
-    process.exit(0);
+    //process.exit(0);
   },
   validate: ms.validate.bind(ms),
   methods: {
@@ -55,11 +55,7 @@ const cluster = new Cluster({
   },
 });
 
-function RegisterLoader(isStart, variables) {
-  //console.log('this', this)
-  let cluster = this;
-  if (isStart) {
-    let register = new ClientRegister({
+new ClientRegister({
       route: {
         path: [process.env.SELF_PATH, 'eh/:eh/test'],
         url: process.env.SELF_URL,
@@ -67,8 +63,3 @@ function RegisterLoader(isStart, variables) {
       },
       cluster: cluster.cluster,
     });
-    variables({ register: register });
-  } else {
-    variables.register.shutdown();
-  }
-}
