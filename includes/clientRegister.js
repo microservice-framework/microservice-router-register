@@ -16,9 +16,9 @@ function ClientRegister(settings) {
   this.route = settings.route;
   this.authData = false;
   this.cpuUsage = false;
-  this.receivedStats = {}
-  this.collectInterval = false
-  this.reportInterval = false
+  this.receivedStats = {};
+  this.collectInterval = false;
+  this.reportInterval = false;
 
   this.server = {
     url: process.env.ROUTER_URL,
@@ -39,8 +39,8 @@ function ClientRegister(settings) {
     this.shutdown();
   });
 
-  this.init()
-  return this
+  this.init();
+  return this;
 }
 
 // Inherit from EventEmitter
@@ -54,11 +54,11 @@ ClientRegister.prototype.debug = {
 ClientRegister.prototype.shutdown = function () {
   this.isTerminating = true;
 
-  if(this.collectInterval) {
-    clearInterval(this.collectInterval)
+  if (this.collectInterval) {
+    clearInterval(this.collectInterval);
   }
-  if(this.reportInterval) {
-    clearInterval(this.reportInterval)
+  if (this.reportInterval) {
+    clearInterval(this.reportInterval);
   }
 
   if (this.authData) {
@@ -73,20 +73,20 @@ ClientRegister.prototype.shutdown = function () {
 ClientRegister.prototype.init = function () {
   if (this.cluster.isWorker) {
     this.debug.debug('Cluster child detected');
-    this.collectInterval = setInterval(()=> { 
+    this.collectInterval = setInterval(() => {
       if (this.isTerminating) {
         return;
       }
-      this.collectStat()
-    }, this.server.period)
+      this.collectStat();
+    }, this.server.period);
   } else {
     this.debug.debug('Master detected');
-    this.reportInterval = setInterval(()=> { 
+    this.reportInterval = setInterval(() => {
       if (this.isTerminating) {
         return;
       }
-      this.reportStats()
-    }, this.server.period)
+      this.reportStats();
+    }, this.server.period);
     this.cluster.on('message', (worker, message) => {
       this.debug.debug('Received message %O', message);
       let nowTime = Date.now();
@@ -113,12 +113,12 @@ ClientRegister.prototype.init = function () {
       }
     });
   }
-}
+};
 
 ClientRegister.prototype.collectStat = function () {
   this.debug.debug('collect via process memoryUsage & cpuUsage', process.pid);
   let cpuPercent = '0';
-  
+
   if (!this.receivedStats || !this.receivedStats[process.pid]) {
     this.cpuUsage = process.cpuUsage();
     cpuPercent = (100 * (this.cpuUsage.user + this.cpuUsage.system)) / process.uptime() / 1000000;
@@ -166,13 +166,12 @@ ClientRegister.prototype.collectStat = function () {
   }
 };
 
-
 /**
  * Report Stats.
  */
 ClientRegister.prototype.reportStats = function () {
   this.debug.debug('report stats');
-  
+
   var receivedStats = [];
   for (let workerPID in this.receivedStats) {
     receivedStats.push(this.receivedStats[workerPID].stats);

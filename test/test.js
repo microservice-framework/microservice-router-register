@@ -56,10 +56,10 @@ const cluster = new Cluster({
 });
 
 new ClientRegister({
-      route: {
-        path: [process.env.SELF_PATH, 'eh/:eh/test'],
-        url: process.env.SELF_URL,
-        secureKey: process.env.SECURE_KEY,
-      },
-      cluster: cluster.cluster,
-    });
+  route: {
+    path: [process.env.SELF_PATH, 'eh/:eh/test'],
+    url: process.env.SELF_URL,
+    secureKey: process.env.SECURE_KEY,
+  },
+  cluster: cluster.cluster,
+});
