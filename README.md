@@ -147,3 +147,9 @@ For more details please check our [website](http://microservice-frame.work)
   - preparing switch from access_token header to 'Access-Token'
 - 1.3.1
   - fix possible crash when child is dying
+- 3.0.0
+  - migrate on new branch
+- 3.0.1
+  - refactoring.
+- 3.0.2
+  - set default type handler

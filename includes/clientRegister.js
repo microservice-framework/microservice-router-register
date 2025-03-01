@@ -14,6 +14,10 @@ function ClientRegister(settings) {
 
   this.cluster = settings.cluster;
   this.route = settings.route;
+
+  if (!this.route.type) {
+    this.route.type = 'handler';
+  }
   this.authData = false;
   this.cpuUsage = false;
   this.receivedStats = {};
