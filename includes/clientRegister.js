@@ -191,7 +191,7 @@ ClientRegister.prototype.reportStats = function () {
     this.client.post(router).then((response) => {
       if (response.error) {
         this.debug.log('Router server is not available.');
-        this.debug.debug('Router responce %O.', err);
+        this.debug.debug('Router responce %O.', response.error);
         return;
       }
       this.authData = response.answer;

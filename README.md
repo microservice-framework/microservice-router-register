@@ -153,3 +153,5 @@ For more details please check our [website](http://microservice-frame.work)
   - refactoring.
 - 3.0.2
   - set default type handler
+- 3.0.3
+  - fix variable name typo
