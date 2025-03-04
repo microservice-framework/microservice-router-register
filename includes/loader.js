@@ -19,7 +19,7 @@ const getLoaderSettings = async function (name, headers, mfwHeaders) {
   if (response.error) {
     return {
       name: name,
-      error: rouresponsetes.error,
+      error: response.error,
     };
   }
 
@@ -142,7 +142,7 @@ export default async function (request) {
       var errorItem = errorResult[i];
       errorMessage = errorMessage + ' - ' + errorItem.name + ': ' + errorItem.error.message + '\n';
     }
-    return errorMessage;
+    return { code: 403, message: errorMessage};
   }
   //assign preloaded
   debug.debug('okResult', okResult);
