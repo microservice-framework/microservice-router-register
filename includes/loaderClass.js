@@ -201,6 +201,9 @@ LoaderClass.prototype.getLoaderSettings = function(name, callback) {
       if (err) {
         return callback(err);
       }
+      if (!routes || routes.length == 0) {
+        return callback('skip');
+      }
       if (routes[0].scope == process.env.SCOPE) {
         return callback('skip');
       }
