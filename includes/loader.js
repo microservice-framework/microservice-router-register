@@ -25,6 +25,13 @@ const getLoaderSettings = async function (name, headers, mfwHeaders) {
 
   let routes = response.answer;
 
+  if (!routes || !routes.length) {
+    return {
+      name: name,
+      error: new Error('No route found for ' + name),
+    };
+  }
+
   if (routes[0].scope == process.env.SCOPE) {
     return {
       name: name,
